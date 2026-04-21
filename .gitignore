@@ -1,0 +1,29 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+
+# CMake cache and generated metadata
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# Firmware artifacts
+*.elf
+*.map
+*.hex
+*.bin
+*.lst
+
+# Object/dependency/temp/log
+*.o
+*.obj
+*.d
+*.tmp
+*.log
+
+# IDE and local tooling state
+.idea/
+.serena/
