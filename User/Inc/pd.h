@@ -1,13 +1,7 @@
-//
-// Created by xiaow on 2026/4/16.
-//
-
 #ifndef PD_DP_PD_H
 #define PD_DP_PD_H
 
-#include <stdint.h>
-
-#include "ch32l103_usbpd.h"
+#include "ch32l103.h"
 
 #define PD_CC_CHECK_AND_RUN(PORT_REG, CMP_SEL, ...)      \
 do                                                    \

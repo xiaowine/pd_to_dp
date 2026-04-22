@@ -1,114 +1,6 @@
-/********************************** (C) COPYRIGHT  *******************************
- * File Name          : ch32l103_can.h
- * Author             : WCH
- * Version            : V1.0.0
- * Date               : 2023/07/08
- * Description        : This file contains all the functions prototypes for the
- *                      CAN firmware library.
- *********************************************************************************
- * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
- * Attention: This software (modified or not) and binary are used for
- * microcontroller manufactured by Nanjing Qinheng Microelectronics.
- *******************************************************************************/
-#ifndef __CH32L103_USBPD_H
-#define __CH32L103_USBPD_H
+#ifndef CH32L103_USBPD_H
+#define CH32L103_USBPD_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "ch32l103.h"
-
-#ifndef VOID
-#define VOID                    void
-#endif
-#ifndef CONST
-#define CONST                   const
-#endif
-#ifndef BOOL
-typedef unsigned char           BOOL;
-#endif
-#ifndef BOOLEAN
-typedef unsigned char           BOOLEAN;
-#endif
-#ifndef CHAR
-typedef char                    CHAR;
-#endif
-#ifndef INT8
-typedef char                    INT8;
-#endif
-#ifndef INT16
-typedef short                   INT16;
-#endif
-#ifndef INT32
-typedef long                    INT32;
-#endif
-#ifndef UINT8
-typedef unsigned char           UINT8;
-#endif
-#ifndef UINT16
-typedef unsigned short          UINT16;
-#endif
-#ifndef UINT32
-typedef unsigned long           UINT32;
-#endif
-#ifndef UINT8V
-typedef unsigned char volatile  UINT8V;
-#endif
-#ifndef UINT16V
-typedef unsigned short volatile UINT16V;
-#endif
-#ifndef UINT32V
-typedef unsigned long volatile  UINT32V;
-#endif
-
-#ifndef PVOID
-typedef void                    *PVOID;
-#endif
-#ifndef PCHAR
-typedef char                    *PCHAR;
-#endif
-#ifndef PCHAR
-typedef const char              *PCCHAR;
-#endif
-#ifndef PINT8
-typedef char                    *PINT8;
-#endif
-#ifndef PINT16
-typedef short                   *PINT16;
-#endif
-#ifndef PINT32
-typedef long                    *PINT32;
-#endif
-#ifndef PUINT8
-typedef unsigned char           *PUINT8;
-#endif
-#ifndef PUINT16
-typedef unsigned short          *PUINT16;
-#endif
-#ifndef PUINT32
-typedef unsigned long           *PUINT32;
-#endif
-#ifndef PUINT8V
-typedef volatile unsigned char  *PUINT8V;
-#endif
-#ifndef PUINT16V
-typedef volatile unsigned short *PUINT16V;
-#endif
-#ifndef PUINT32V
-typedef volatile unsigned long  *PUINT32V;
-#endif
-
- /******************************************************************************/
-/* Related macro definitions */
-
-/* Define the return value of the function */
-#ifndef  SUCCESS
-#define  SUCCESS                   0
-#endif
-#ifndef  FAIL
-#define  FAIL                      0xFF
-#endif
 
 /* Register Bit Definition */
 /* USBPD->CONFIG */
@@ -127,12 +19,10 @@ typedef volatile unsigned long  *PUINT32V;
 /* USBPD->CONTROL */
 #define PD_TX_EN            (1<<0)             /* USBPD transceiver mode and transmit enable */
 #define BMC_START           (1<<1)             /* BMC send start signal */
-#define RX_STATE_0          (1<<2)             /* PD received state bit 0 */
-#define RX_STATE_1          (1<<3)             /* PD received state bit 1 */
-#define RX_STATE_2          (1<<4)             /* PD received state bit 2 */
+#define CONTROL_RSVD_Mask   (7<<2)             /* Reserved bits [4:2], keep 0 */
 #define DATA_FLAG           (1<<5)             /* Cache data valid flag bit */
-#define TX_BIT_BACK         (1<<6)             /* Indicates the current bit status of the BMC when sending the code */
-#define BMC_BYTE_HI         (1<<7)             /* Indicates the current half-byte status of the PD data being sent and received */
+#define RX_ST_L             (1<<6)             /* Receive status low bit (RO) */
+#define RX_ST_H             (1<<7)             /* Receive status high bit (RO) */
 
 /* USBPD->TX_SEL */
 #define TX_SEL1             (0<<0)
@@ -253,29 +143,43 @@ typedef volatile unsigned long  *PUINT32V;
 #define DEF_PD_CC1                 0x00
 #define DEF_PD_CC2                 0x01
 
-#define PIN_CC1                    GPIO_Pin_6
-#define PIN_CC2                    GPIO_Pin_7
-
 /* PD Tx Status */
 #define DEF_PD_TX_OK               0x00
 #define DEF_PD_TX_FAIL             0x01
 
-/* PDO INDEX */
-#define PDO_INDEX_1                1
-#define PDO_INDEX_2                2
-#define PDO_INDEX_3                3
-#define PDO_INDEX_4                4
-#define PDO_INDEX_5                5
 
 /******************************************************************************/
 #define UPD_TMR_TX_96M    (160-1)                                            /* timer value for USB PD BMC transmittal @Fsys=96MHz */
+
+
+
 #define UPD_TMR_RX_96M    (240-1)                                            /* timer value for USB PD BMC receiving @Fsys=96MHz */
+
+
+
 #define UPD_TMR_TX_48M    (80-1)                                             /* timer value for USB PD BMC transmittal @Fsys=48MHz */
+
+
+
 #define UPD_TMR_RX_48M    (120-1)                                            /* timer value for USB PD BMC receiving @Fsys=48MHz */
+
+
+
 #define UPD_TMR_TX_24M    (40-1)                                             /* timer value for USB PD BMC transmittal @Fsys=24MHz */
+
+
+
 #define UPD_TMR_RX_24M    (60-1)                                             /* timer value for USB PD BMC receiving @Fsys=24MHz */
+
+
+
 #define UPD_TMR_TX_12M    (20-1)                                             /* timer value for USB PD BMC transmittal @Fsys=12MHz */
+
+
+
 #define UPD_TMR_RX_12M    (30-1)                                             /* timer value for USB PD BMC receiving @Fsys=12MHz */
+
+
 
 #define MASK_PD_STAT      0x03                                               /* Bit mask for current PD status */
 #define PD_RX_SOP0        0x01                                               /* SOP0 received */
@@ -301,41 +205,41 @@ typedef volatile unsigned long  *PUINT32V;
 /* PD State Machine */
 typedef enum
 {
-    STA_IDLE = 0,                                                               /* 0: No task status */
-    STA_DISCONNECT,                                                             /* 1: Disconnection */
-    STA_SRC_CONNECT,                                                            /* 2: SRC connect */
-    STA_RX_SRC_CAP_WAIT,                                                        /* 3: Waiting to receive SRC_CAP */
-    STA_RX_SRC_CAP,                                                             /* 4: SRC_CAP received */
-    STA_TX_REQ,                                                                 /* 5: Send REQUEST */
-    STA_RX_ACCEPT_WAIT,                                                         /* 6: Waiting to receive ACCEPT */
-    STA_RX_ACCEPT,                                                              /* 7: ACCEPT received */
-    STA_RX_REJECT,                                                              /* 8: REJECT received */
-    STA_RX_PS_RDY_WAIT,                                                         /* 9: Waiting to receive PS_RDY */
-    STA_RX_PS_RDY,                                                              /* 10: PS_RDY received */
-    STA_SINK_CONNECT,                                                           /* 11: SNK access */
-    STA_TX_SRC_CAP,                                                             /* 12: Send SRC_CAP */
-    STA_RX_REQ_WAIT,                                                            /* 13: Waiting to receive REQUEST */
-    STA_RX_REQ,                                                                 /* 14: REQUEST received */
-    STA_TX_ACCEPT,                                                              /* 15: Send ACCEPT */
-    STA_TX_REJECT,                                                              /* 16: Send REJECT */
-    STA_ADJ_VOL,                                                                /* 17: Adjustment of output voltage and current */
-    STA_TX_PS_RDY,                                                              /* 18: Send PS_RDY */
-    STA_TX_DR_SWAP,                                                             /* 19: Send DR_SWAP */
-    STA_RX_DR_SWAP_ACCEPT,                                                      /* 20: Waiting to receive the answer ACCEPT from DR_SWAP */
-    STA_TX_PR_SWAP,                                                             /* 21: Send PR_SWAP */
-    STA_RX_PR_SWAP_ACCEPT,                                                      /* 22: Waiting to receive the answer ACCEPT from PR_SWAP */
-    STA_RX_PR_SWAP_PS_RDY,                                                      /* 23: Waiting to receive the answer PS_RDY from PR_SWAP */
-    STA_TX_PR_SWAP_PS_RDY,                                                      /* 24: Send answer PS_RDY for PR_SWAP */
-    STA_PR_SWAP_RECON_WAIT,                                                     /* 25: Wait for PR_SWAP before reconnecting */
-    STA_SRC_RECON_WAIT,                                                         /* 26: Waiting for SRC to reconnect */
-    STA_SINK_RECON_WAIT,                                                        /* 27: Waiting for SNK to reconnect */
-    STA_RX_APD_PS_RDY_WAIT,                                                     /* 28: Waiting for PS_RDY from the receiving adapter */
-    STA_RX_APD_PS_RDY,                                                          /* 29: PS_RDY received from the adapter */
-    STA_MODE_SWITCH,                                                            /* 30: Mode switching */
-    STA_TX_SOFTRST,                                                             /* 31: Sending a software reset */
-    STA_TX_HRST,                                                                /* 32: Send hardware reset */
-    STA_PHY_RST,                                                                /* 33: PHY reset */
-    STA_APD_IDLE_WAIT,                                                          /* 34: Waiting for the adapter to become idle */
+    STA_IDLE = 0, /* 0: No task status */
+    STA_DISCONNECT, /* 1: Disconnection */
+    STA_SRC_CONNECT, /* 2: SRC connect */
+    STA_RX_SRC_CAP_WAIT, /* 3: Waiting to receive SRC_CAP */
+    STA_RX_SRC_CAP, /* 4: SRC_CAP received */
+    STA_TX_REQ, /* 5: Send REQUEST */
+    STA_RX_ACCEPT_WAIT, /* 6: Waiting to receive ACCEPT */
+    STA_RX_ACCEPT, /* 7: ACCEPT received */
+    STA_RX_REJECT, /* 8: REJECT received */
+    STA_RX_PS_RDY_WAIT, /* 9: Waiting to receive PS_RDY */
+    STA_RX_PS_RDY, /* 10: PS_RDY received */
+    STA_SINK_CONNECT, /* 11: SNK access */
+    STA_TX_SRC_CAP, /* 12: Send SRC_CAP */
+    STA_RX_REQ_WAIT, /* 13: Waiting to receive REQUEST */
+    STA_RX_REQ, /* 14: REQUEST received */
+    STA_TX_ACCEPT, /* 15: Send ACCEPT */
+    STA_TX_REJECT, /* 16: Send REJECT */
+    STA_ADJ_VOL, /* 17: Adjustment of output voltage and current */
+    STA_TX_PS_RDY, /* 18: Send PS_RDY */
+    STA_TX_DR_SWAP, /* 19: Send DR_SWAP */
+    STA_RX_DR_SWAP_ACCEPT, /* 20: Waiting to receive the answer ACCEPT from DR_SWAP */
+    STA_TX_PR_SWAP, /* 21: Send PR_SWAP */
+    STA_RX_PR_SWAP_ACCEPT, /* 22: Waiting to receive the answer ACCEPT from PR_SWAP */
+    STA_RX_PR_SWAP_PS_RDY, /* 23: Waiting to receive the answer PS_RDY from PR_SWAP */
+    STA_TX_PR_SWAP_PS_RDY, /* 24: Send answer PS_RDY for PR_SWAP */
+    STA_PR_SWAP_RECON_WAIT, /* 25: Wait for PR_SWAP before reconnecting */
+    STA_SRC_RECON_WAIT, /* 26: Waiting for SRC to reconnect */
+    STA_SINK_RECON_WAIT, /* 27: Waiting for SNK to reconnect */
+    STA_RX_APD_PS_RDY_WAIT, /* 28: Waiting for PS_RDY from the receiving adapter */
+    STA_RX_APD_PS_RDY, /* 29: PS_RDY received from the adapter */
+    STA_MODE_SWITCH, /* 30: Mode switching */
+    STA_TX_SOFTRST, /* 31: Sending a software reset */
+    STA_TX_HRST, /* 32: Send hardware reset */
+    STA_PHY_RST, /* 33: PHY reset */
+    STA_APD_IDLE_WAIT, /* 34: Waiting for the adapter to become idle */
 } CC_STATUS;
 
 /******************************************************************************/
@@ -344,64 +248,61 @@ typedef union
 {
     struct Message_Header
     {
-        UINT8  MsgType: 5;                                                      /* Message Type */
-        UINT8  PDRole: 1;                                                       /* 0-UFP; 1-DFP */
-        UINT8  SpecRev: 2;                                                      /* 00-Rev1.0; 01-Rev2.0; 10-Rev3.0; */
-        UINT8  PRRole: 1;                                                       /* 0-Sink; 1-Source */
-        UINT8  MsgID: 3;
-        UINT8  NumDO: 3;
-        UINT8  Ext: 1;
-    }Message_Header;
-    UINT16 Data;
-}Message_Header;
+        uint8_t MsgType : 5; /* Message Type */
+        uint8_t PDRole : 1; /* 0-UFP; 1-DFP */
+        uint8_t SpecRev : 2; /* 00-Rev1.0; 01-Rev2.0; 10-Rev3.0; */
+        uint8_t PRRole : 1; /* 0-Sink; 1-Source */
+        uint8_t MsgID : 3;
+        uint8_t NumDO : 3;
+        uint8_t Ext : 1;
+    } Message_Header;
+
+    uint16_t raw;
+} Message_Header;
 
 /******************************************************************************/
 /* Bit definition */
 typedef union
 {
-    struct _BITS_
+    struct BITS
     {
-        UINT8  Msg_Recvd: 1;                                                    /* Notify the main program of the receipt of a PD packet */
-        UINT8  Connected: 1;                                                    /* PD Physical Layer Connected Flag */
-        UINT8  Stop_Det_Chk: 1;                                                 /* 0-Enable detection; 1-Disable disconnection detection */
-        UINT8  PD_Role: 1;                                                      /* 0-UFP; 1-DFP */
-        UINT8  PR_Role: 1;                                                      /* 0-Sink; 1-Source */
-        UINT8  Auto_Ack_PRRole: 1;                                              /* Role used by auto-responder 0:SINK; 1:SOURCE */
-        UINT8  PD_Version: 1;                                                   /* PD version 0-PD2.0; 1-PD3.0 */
-        UINT8  VDM_Version: 1;                                                  /* VDM Version 0-1.0 1-2.0 */
-        UINT8  HPD_Connected: 1;                                                /* HPD Physical Layer Connected Flag */
-        UINT8  HPD_Det_Chk: 1;                                                  /* 0-turn off HPD connection detection; 1-turn on HPD connection detection */
-        UINT8  CC_Sel_En: 1;                                                    /* 0-CC channel selection toggle enable; 1-CC channel selection toggle disable */
-        UINT8  CC_Sel_State: 1;                                                 /* 0-CC channel selection switches to 0; 1-CC channel selection switches to 1 */
-        UINT8  PD_Comm_Succ: 1;                                                 /* 0-PD communication unsuccessful; 1-PD communication successful; */
-        UINT8  Recv: 3;
-    }Bit;
-    UINT16 Bit_Flag;
-}_BIT_FLAG;
+        uint8_t Msg_Recvd : 1; /* Notify the main program of the receipt of a PD packet */
+        uint8_t Connected : 1; /* PD Physical Layer Connected Flag */
+        uint8_t Stop_Det_Chk : 1; /* 0-Enable detection; 1-Disable disconnection detection */
+        uint8_t PD_Role : 1; /* 0-UFP; 1-DFP */
+        uint8_t PR_Role : 1; /* 0-Sink; 1-Source */
+        uint8_t Auto_Ack_PRRole : 1; /* Role used by auto-responder 0:SINK; 1:SOURCE */
+        uint8_t PD_Version : 1; /* PD version 0-PD2.0; 1-PD3.0 */
+        uint8_t VDM_Version : 1; /* VDM Version 0-1.0 1-2.0 */
+        uint8_t HPD_Connected : 1; /* HPD Physical Layer Connected Flag */
+        uint8_t HPD_Det_Chk : 1; /* 0-turn off HPD connection detection; 1-turn on HPD connection detection */
+        uint8_t CC_Sel_En : 1; /* 0-CC channel selection toggle enable; 1-CC channel selection toggle disable */
+        uint8_t CC_Sel_State : 1; /* 0-CC channel selection switches to 0; 1-CC channel selection switches to 1 */
+        uint8_t PD_Comm_Succ : 1; /* 0-PD communication unsuccessful; 1-PD communication successful; */
+        uint8_t Recv : 3;
+    } Bit;
+
+    uint16_t raw;
+} BIT_FLAG;
 
 /* PD control-related structures */
-typedef struct _PD_CONTROL
+typedef struct
 {
-    CC_STATUS PD_State;                                                         /* PD communication status machine */
-    CC_STATUS PD_State_Last;                                                    /* PD communication status machine (last value) */
-    UINT8  Msg_ID;                                                              /* ID of the message sent */
-    UINT8  Det_Timer;                                                           /* PD connection status detection timing */
-    UINT8  Det_Cnt;                                                             /* Number of PD connection status detections */
-    UINT8  Det_Sel_Cnt;                                                         /* Number of SEL toggles for PD connection status detection */
-    UINT8  HPD_Det_Timer;                                                       /* HPD connection detection timing */
-    UINT8  HPD_Det_Cnt;                                                         /* HPD pin connection status detection count */
-    UINT16 PD_Comm_Timer;                                                       /* PD shared timing variables */
-    UINT8  ReqPDO_Idx;                                                          /* Index of the requested PDO, valid values 1-7 */
-    UINT16 PD_BusIdle_Timer;                                                    /* Bus Idle Time Timer */
-    UINT8  Mode_Try_Cnt;                                                        /* Number of retries for current mode, highest bit marks mode */
-    UINT8  Err_Op_Cnt;                                                          /* Exception operation count */
-    UINT8  Adapter_Idle_Cnt;                                                    /* Adapter communication idle timing */
-    _BIT_FLAG Flag;                                                             /* Flag byte bit definition */
-}PD_CONTROL, *pPD_CONTROL;
-
-
-#ifdef __cplusplus
-}
-#endif
+    CC_STATUS PD_State; /* PD communication status machine */
+    CC_STATUS PD_State_Last; /* PD communication status machine (last value) */
+    uint8_t Msg_ID; /* ID of the message sent */
+    uint8_t Det_Timer; /* PD connection status detection timing */
+    uint8_t Det_Cnt; /* Number of PD connection status detections */
+    uint8_t Det_Sel_Cnt; /* Number of SEL toggles for PD connection status detection */
+    uint8_t HPD_Det_Timer; /* HPD connection detection timing */
+    uint8_t HPD_Det_Cnt; /* HPD pin connection status detection count */
+    uint16_t PD_Comm_Timer; /* PD shared timing variables */
+    uint8_t ReqPDO_Idx; /* Index of the requested PDO, valid values 1-7 */
+    uint16_t PD_BusIdle_Timer; /* Bus Idle Time Timer */
+    uint8_t Mode_Try_Cnt; /* Number of retries for current mode, highest bit marks mode */
+    uint8_t Err_Op_Cnt; /* Exception operation count */
+    uint8_t Adapter_Idle_Cnt; /* Adapter communication idle timing */
+    BIT_FLAG Flag; /* Flag byte bit definition */
+} PD_CONTROL, *pPD_CONTROL;
 
 #endif

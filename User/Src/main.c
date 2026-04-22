@@ -4,9 +4,9 @@
 #include "pd.h"
 #include "tim.h"
 
-uint8_t Tmr_Ms_Dlt = 0;
-uint8_t Tmr_Ms_Cnt_Last = 0;
-uint8_t Det_Timer = 0;
+uint8_t Tmr_Ms_Dlt = 0; // 系统计时器毫秒计时这次的增量值
+uint8_t Tmr_Ms_Cnt_Last = 0; // 系统计时器毫秒计时上一次的值
+uint8_t Det_Timer = 0; // PD连接状态检测计时器总递增值
 
 
 void SystemClock_Config(void);

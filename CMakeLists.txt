@@ -42,6 +42,7 @@ set(USER_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/pd.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/ch32l103_it.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/system.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/pd_helper.c"
 )
 
 add_executable(${PROJECT_NAME}
