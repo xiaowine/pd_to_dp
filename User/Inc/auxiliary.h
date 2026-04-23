@@ -15,7 +15,7 @@
 #define POL_PIN GPIO_Pin_5
 #define POL_PORT GPIOA
 
-void AUXILIARY_init(void);
+void AUXILIARY_Init(void);
 void U2D2_Normal(void);
 void U2D2_Flipped(void);
 void U0D4_Normal(void);

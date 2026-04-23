@@ -1,13 +1,5 @@
-#include "pd_helper.h"
+#include "usbpd_helper.h"
 #include "debug.h"
-
-static uint32_t USBPD_ReadU32LE(const uint8_t* p)
-{
-    return (uint32_t)p[0]
-            | (uint32_t)p[1] << 8
-            | (uint32_t)p[2] << 16
-            | (uint32_t)p[3] << 24;
-}
 
 static void USBPD_PrintFixedPDO(const uint8_t index, const uint32_t raw)
 {
@@ -132,7 +124,7 @@ void USBPD_PDO_Analyse(const uint8_t* message)
     for (uint8_t i = 0; i < num_do; i++)
     {
         const uint8_t* obj = &message[2u + (uint8_t)(i * 4u)];
-        const uint32_t raw = USBPD_ReadU32LE(obj);
+        const uint32_t raw = USBPD_READ_LE32(obj);
         USBPD_PDO_Generic pdo;
         pdo.Raw = raw;
 
@@ -183,7 +175,7 @@ uint8_t USBPD_FIND_5V_PDO(const uint8_t* message)
     for (uint8_t i = 0; i < num_do; i++)
     {
         const uint8_t* obj = &message[2u + (uint8_t)(i * 4u)];
-        const uint32_t raw = USBPD_ReadU32LE(obj);
+        const uint32_t raw = USBPD_READ_LE32(obj);
         USBPD_PDO_Fixed5V_Source pdo;
         pdo.Raw = raw;
         if ((pdo.Bit.PDOType == USBPD_PDO_TYPE_FIXED) && pdo.Bit.VoltageIn50mV == 100u && pdo.Bit.USBCommCapable)
@@ -193,4 +185,21 @@ uint8_t USBPD_FIND_5V_PDO(const uint8_t* message)
         }
     }
     return index_5v;
+}
+
+uint8_t USBPD_GetCcCmpFlags(volatile uint16_t* port_reg, GPIO_TypeDef* gpio, const uint16_t gpio_pin)
+{
+    uint8_t cmp = 0;
+
+    USBPD_CC_CHECK_AND_EXEC((*port_reg), CC_CMP_22,
+                            {
+                            cmp |= bCC_CMP_22;
+                            });
+
+    if (GPIO_ReadInputDataBit(gpio, gpio_pin) != Bit_RESET)
+    {
+        cmp |= bCC_CMP_220;
+    }
+
+    return cmp;
 }

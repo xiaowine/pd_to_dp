@@ -13,22 +13,6 @@
 #include "tim.h"
 
 
-/**
- * @fn      TIM4_IRQHandler
- * @brief   TIM4 interrupt handler
- * @return  none
- */
-__attribute__((interrupt("WCH-Interrupt-fast"))) void TIM4_IRQHandler(void)
-{
-    if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET)
-    {
-        TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
-        Tim_Ms_Cunt++;
-        // PRINT("Timer interrupt\r\n" );
-    }
-}
-
-
 /*********************************************************************
  * @fn      NMI_Handler
  *

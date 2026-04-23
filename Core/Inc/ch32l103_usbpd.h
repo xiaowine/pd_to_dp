@@ -261,48 +261,43 @@ typedef union
 } Message_Header;
 
 /******************************************************************************/
-/* Bit definition */
+/* 位定义 */
 typedef union
 {
-    struct BITS
-    {
-        uint8_t Msg_Recvd : 1; /* Notify the main program of the receipt of a PD packet */
-        uint8_t Connected : 1; /* PD Physical Layer Connected Flag */
-        uint8_t Stop_Det_Chk : 1; /* 0-Enable detection; 1-Disable disconnection detection */
-        uint8_t PD_Role : 1; /* 0-UFP; 1-DFP */
-        uint8_t PR_Role : 1; /* 0-Sink; 1-Source */
-        uint8_t Auto_Ack_PRRole : 1; /* Role used by auto-responder 0:SINK; 1:SOURCE */
-        uint8_t PD_Version : 1; /* PD version 0-PD2.0; 1-PD3.0 */
-        uint8_t VDM_Version : 1; /* VDM Version 0-1.0 1-2.0 */
-        uint8_t HPD_Connected : 1; /* HPD Physical Layer Connected Flag */
-        uint8_t HPD_Det_Chk : 1; /* 0-turn off HPD connection detection; 1-turn on HPD connection detection */
-        uint8_t CC_Sel_En : 1; /* 0-CC channel selection toggle enable; 1-CC channel selection toggle disable */
-        uint8_t CC_Sel_State : 1; /* 0-CC channel selection switches to 0; 1-CC channel selection switches to 1 */
-        uint8_t PD_Comm_Succ : 1; /* 0-PD communication unsuccessful; 1-PD communication successful; */
-        uint8_t Recv : 3;
-    } Bit;
-
-    uint16_t raw;
+    uint8_t Msg_Recvd : 1; /* 通知主程序已接收到 PD 数据包 */
+    uint8_t Connected : 1; /* PD 物理层连接标志 */
+    uint8_t Stop_Det_Chk : 1; /* 0-使能检测；1-禁用断开检测 */
+    uint8_t PD_Role : 1; /* 0-UFP；1-DFP */
+    uint8_t PR_Role : 1; /* 0-Sink；1-Source */
+    uint8_t Auto_Ack_PRRole : 1; /* 自动应答使用的电源角色 0:SINK；1:SOURCE */
+    uint8_t PD_Version : 1; /* PD 版本 0-PD2.0；1-PD3.0 */
+    uint8_t VDM_Version : 1; /* VDM 版本 0-1.0；1-2.0 */
+    uint8_t HPD_Connected : 1; /* HPD 物理层连接标志 */
+    uint8_t HPD_Det_Chk : 1; /* 0-关闭 HPD 连接检测；1-开启 HPD 连接检测 */
+    uint8_t CC_Sel_En : 1; /* 0-使能 CC 通道切换；1-禁用 CC 通道切换 */
+    uint8_t CC_Sel_State : 1; /* 0-CC 通道切换到 0；1-CC 通道切换到 1 */
+    uint8_t PD_Comm_Succ : 1; /* 0-PD 通信失败；1-PD 通信成功 */
+    uint8_t Recv : 3;
 } BIT_FLAG;
 
-/* PD control-related structures */
+/* PD 控制相关结构体 */
 typedef struct
 {
-    CC_STATUS PD_State; /* PD communication status machine */
-    CC_STATUS PD_State_Last; /* PD communication status machine (last value) */
-    uint8_t Msg_ID; /* ID of the message sent */
-    uint8_t Det_Timer; /* PD connection status detection timing */
-    uint8_t Det_Cnt; /* Number of PD connection status detections */
-    uint8_t Det_Sel_Cnt; /* Number of SEL toggles for PD connection status detection */
-    uint8_t HPD_Det_Timer; /* HPD connection detection timing */
-    uint8_t HPD_Det_Cnt; /* HPD pin connection status detection count */
-    uint16_t PD_Comm_Timer; /* PD shared timing variables */
-    uint8_t ReqPDO_Idx; /* Index of the requested PDO, valid values 1-7 */
-    uint16_t PD_BusIdle_Timer; /* Bus Idle Time Timer */
-    uint8_t Mode_Try_Cnt; /* Number of retries for current mode, highest bit marks mode */
-    uint8_t Err_Op_Cnt; /* Exception operation count */
-    uint8_t Adapter_Idle_Cnt; /* Adapter communication idle timing */
-    BIT_FLAG Flag; /* Flag byte bit definition */
-} PD_CONTROL, *pPD_CONTROL;
+    CC_STATUS PD_State; /* PD 通信状态机当前状态 */
+    CC_STATUS PD_State_Last; /* PD 通信状态机上一次状态 */
+    uint8_t Msg_ID; /* 已发送消息的 ID */
+    uint8_t Det_Timer; /* PD 连接状态检测计时 */
+    uint8_t Det_Cnt; /* PD 连接状态检测次数 */
+    uint8_t Det_Sel_Cnt; /* PD 连接检测中 SEL 切换次数 */
+    uint8_t HPD_Det_Timer; /* HPD 连接检测计时 */
+    uint8_t HPD_Det_Cnt; /* HPD 引脚连接状态检测次数 */
+    uint16_t PD_Comm_Timer; /* PD 通信共享计时变量 */
+    uint8_t ReqPDO_Idx; /* 请求的 PDO 索引，有效值 1-7 */
+    uint16_t PD_BusIdle_Timer; /* 总线空闲时间计时器 */
+    uint8_t Mode_Try_Cnt; /* 当前模式重试次数，最高位用于模式标记 */
+    uint8_t Err_Op_Cnt; /* 异常操作计数 */
+    uint8_t Adapter_Idle_Cnt; /* 适配器通信空闲计时 */
+    BIT_FLAG Flag; /* 标志位定义 */
+} PD_CONTROL;
 
 #endif

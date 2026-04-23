@@ -1,8 +1,7 @@
 #include "auxiliary.h"
 #include "ch32l103.h"
-#include "pd.h"
 
-void AUXILIARY_init(void)
+void AUXILIARY_Init(void)
 {
     RCC_PB2PeriphClockCmd(RCC_PB2Periph_GPIOA | RCC_PB2Periph_GPIOB, ENABLE);
 
@@ -115,7 +114,7 @@ __attribute__((interrupt("WCH-Interrupt-fast"))) void EXTI0_IRQHandler(void)
     if (EXTI_GetITStatus(EXTI_Line0) != RESET)
     {
         EXTI_ClearITPendingBit(EXTI_Line0);
-        USBPD_DisConnect();
+        // USBPD_DisConnect();
         PRINT("KEY Pressed\r\n");
     }
 }

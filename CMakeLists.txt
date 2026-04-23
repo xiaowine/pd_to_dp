@@ -39,10 +39,11 @@ set(USER_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/debug.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/main.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/tim.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/pd.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/ch32l103_it.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/system.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/pd_helper.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_helper.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_phy.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_pe.c"
 )
 
 add_executable(${PROJECT_NAME}

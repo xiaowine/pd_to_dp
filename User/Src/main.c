@@ -1,8 +1,8 @@
 #include "auxiliary.h"
 #include "ch32l103.h"
 #include "debug.h"
-#include "pd.h"
 #include "tim.h"
+#include "../Inc/usbpd_phy.h"
 
 uint8_t Tmr_Ms_Dlt = 0; // 系统计时器毫秒计时这次的增量值
 uint8_t Tmr_Ms_Cnt_Last = 0; // 系统计时器毫秒计时上一次的值
@@ -54,24 +54,14 @@ int main(void)
     USART_Printf_Init(2000000);
     PRINT("SystemClk:%ld\r\n", SystemCoreClock);
     PRINT("PD SNK TEST\r\n");
-    PD_Tim_Init();
-    USBPD_Init();
-    AUXILIARY_init();
+    USBPD_Tim_Init();
+    // USBPD_Init();
+    AUXILIARY_Init();
+    USBPD_Phy_Init();
 
     while (1)
     {
-        TIM_ITConfig(TIM1, TIM_IT_Update, DISABLE);
-        Tmr_Ms_Dlt = Tim_Ms_Cunt - Tmr_Ms_Cnt_Last;
-        Tmr_Ms_Cnt_Last = Tim_Ms_Cunt;
-        TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
-        Det_Timer += Tmr_Ms_Dlt;
-        if (Det_Timer > 4)
-        {
-            USBPD_Detect_Process();
-            // PRINT("Det_Timer:%d\r\n", Det_Timer);
-            Det_Timer = 0;
-        }
-        USBPD_Main_Proc();
+        USBPD_Phy_Run();
     }
 }
 
@@ -89,7 +79,7 @@ void SystemClock_Config(void)
     }
     RCC_HCLKConfig(RCC_SYSCLK_Div1);
     RCC_PCLK2Config(RCC_HCLK_Div1);
-    RCC_PCLK1Config(RCC_HCLK_Div2);
+    RCC_PCLK1Config(RCC_HCLK_Div1);
 
     RCC_PLLConfig(RCC_PLLSource_HSI_Div2, RCC_PLLMul_12);
     RCC_PLLCmd(ENABLE);
