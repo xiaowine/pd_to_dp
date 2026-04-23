@@ -11,7 +11,7 @@ uint8_t Det_Timer = 0; // PD连接状态检测计时器总递增值
 
 void SystemClock_Config(void);
 
-void PD_Detect_EventCallback(const PD_DetectEventType event, const uint8_t cc)
+void USBPD_Phy_Detect_EventCallback(const PD_DetectEventType event, const uint8_t cc)
 {
     if (event == PD_EVENT_ATTACH)
     {

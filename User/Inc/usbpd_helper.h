@@ -1,11 +1,7 @@
 #ifndef USBPD_HELPER_H
 #define USBPD_HELPER_H
 
-#include <stdint.h>
-
 #include "ch32l103.h"
-#include "pd_pdo.h"
-#include "pd_rdo.h"
 
 #define USBPD_CC_CHECK_AND_EXEC(PORT_REG, CMP_SEL, ...)  /* 配置 CC 比较器阈值并检测，命中后执行传入代码 */ \
 do                                                    \
@@ -21,6 +17,7 @@ __VA_ARGS__;                                  \
 
 #define USBPD_CC_IS_GE_0P22V(v)         ((((v) & bCC_CMP_22) != 0u)) /* 电压达到 0.22V 门限 */
 #define USBPD_CC_IS_0P22_TO_2P20V(v)    ((((v) & bCC_CMP_22) != 0u) && (((v) & bCC_CMP_220) == 0u)) /* 电压位于 0.22V~2.20V */
+
 
 
 #define USBPD_CC_IS_GE_2P20V(v)         (((v) & bCC_CMP_220) != 0u) /* 电压达到 2.20V 门限 */
@@ -53,6 +50,11 @@ volatile uint16_t *port = (USBPD->CONFIG & CC_SEL) ? &USBPD->PORT_CC2 : &USBPD->
 #define USBPD_CC_LVE_DISABLE_SELECTED() do { /* 按当前 CC 选择关闭 LVE */ \
 volatile uint16_t *port = (USBPD->CONFIG & CC_SEL) ? &USBPD->PORT_CC2 : &USBPD->PORT_CC1; \
 *port &= (uint16_t)~CC_LVE; \
+} while (0)
+
+#define SWITCH_PD_STATE(state) do { \
+USBPD_Control.PD_State_Last = USBPD_Control.PD_State; \
+USBPD_Control.PD_State = (state); \
 } while (0)
 
 void USBPD_PDO_Analyse(const uint8_t* message);

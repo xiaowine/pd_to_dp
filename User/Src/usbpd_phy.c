@@ -8,21 +8,23 @@ uint8_t currentDeltaTimer = 0; // 当前系统计时器毫秒计时的增量值
 uint8_t totalDeltaTime = 0; // 系统计时器毫秒计时的总递增值
 uint8_t lastDeltaTime = 0; // 系统计时器毫秒计时的上一次的值
 
-PD_CONTROL USBPD_Control = {0};
+volatile PD_CONTROL USBPD_Control = {0};
 
 uint8_t* s_rx_buf;
 
 void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t sop, const uint8_t sync_mode)
 {
     USBPD_CC_LVE_ENABLE_SELECTED();
+    USBPD->CONFIG |= PD_ALL_CLR;
+    USBPD->CONFIG &= ~PD_ALL_CLR;
 
     USBPD->BMC_CLK_CNT = UPD_TMR_TX_96M;
     USBPD->DMA = (uint32_t)pbuf;
-    USBPD->TX_SEL = sop;
-    USBPD->BMC_TX_SZ = len;
     USBPD->CONTROL |= PD_TX_EN;
     USBPD->STATUS &= BMC_AUX_INVALID;
     USBPD->CONTROL |= BMC_START;
+    USBPD->TX_SEL = sop;
+    USBPD->BMC_TX_SZ = len;
     if (sync_mode)
     {
         while (!USBPD_STATUS_HAS_FLAG(IF_TX_END))
@@ -33,15 +35,17 @@ void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t so
     }
 }
 
-void USBPD_Phy_EnterRxMode()
+void USBPD_Phy_EnterRxMode(void)
 {
+    USBPD_CC_LVE_ENABLE_SELECTED();
     USBPD->CONFIG |= PD_ALL_CLR;
     USBPD->CONFIG &= ~PD_ALL_CLR;
-    USBPD->CONTROL &= ~PD_TX_EN;
-    USBPD->DMA = (uint32_t)s_rx_buf;
+
     USBPD->BMC_CLK_CNT = UPD_TMR_RX_96M;
+    USBPD->DMA = (uint32_t)s_rx_buf;
+    USBPD->CONTROL &= ~PD_TX_EN;
+    USBPD->STATUS &= BMC_AUX_INVALID;
     USBPD->CONTROL |= BMC_START;
-    NVIC_EnableIRQ(USBPD_IRQn);
 }
 
 void USBPD_Phy_SetRxBuffer(uint8_t* buf)
@@ -51,6 +55,8 @@ void USBPD_Phy_SetRxBuffer(uint8_t* buf)
 
 void USBPD_Phy_Init(void)
 {
+    USBPD_PE_Init();
+
     RCC_HBPeriphClockCmd(RCC_HBPeriph_USBPD, ENABLE);
     RCC_PB2PeriphClockCmd(RCC_PB2Periph_AFIO, ENABLE);
     RCC_PB2PeriphClockCmd(RCC_PB2Periph_GPIOB, ENABLE);
@@ -68,17 +74,23 @@ void USBPD_Phy_Init(void)
     USBPD->PORT_CC1 |= CC_PD;
     USBPD->PORT_CC2 |= CC_PD;
 
-    USBPD_Phy_TxPacket(NULL, 0, UPD_SOP0, 0); /* 进入 PD 通信模式，发送一个空包作为触发，进入接收状态 */
-    // USBPD_RxMode(0);
+    NVIC_InitTypeDef NVIC_InitStructure = {0};
+    NVIC_InitStructure.NVIC_IRQChannel = USBPD_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    NVIC_EnableIRQ(USBPD_IRQn);
 }
 
-__attribute__((weak)) void PD_Detect_EventCallback(const PD_DetectEventType event, const uint8_t cc)
+__attribute__((weak)) void USBPD_Phy_Detect_EventCallback(const PD_DetectEventType event, const uint8_t cc)
 {
     (void)event;
     (void)cc;
 }
 
-void USBPD_Detect_Check(void)
+void USBPD_Phy_Detect_Check(void)
 {
     USBPD->PORT_CC1 &= ~CC_LVE;
     USBPD->PORT_CC2 &= ~CC_LVE;
@@ -109,7 +121,7 @@ void USBPD_Detect_Check(void)
             if (USBPD_Control.Det_Cnt >= 5u)
             {
                 USBPD_Control.Flag.Connected = 0;
-                PD_Detect_EventCallback(PD_EVENT_DETACH, ret);
+                USBPD_Phy_Detect_EventCallback(PD_EVENT_DETACH, ret);
                 if (!USBPD_Control.Flag.Stop_Det_Chk)
                 {
                     SWITCH_PD_STATE(STA_DISCONNECT);
@@ -140,28 +152,28 @@ void USBPD_Detect_Check(void)
             {
                 USBPD->CONFIG |= CC_SEL;
             }
-            USBPD_Control.Flag.Connected = 1;
-            PD_Detect_EventCallback(PD_EVENT_ATTACH, ret);
+            USBPD_Phy_Detect_EventCallback(PD_EVENT_ATTACH, ret);
             if (!USBPD_Control.Flag.Stop_Det_Chk)
             {
                 SWITCH_PD_STATE(STA_SRC_CONNECT);
             }
+            USBPD_Phy_TxPacket(NULL, 0, UPD_HARD_RESET, 1); /* 发送 Hard Reset 并等待发送完成 */
+            USBPD_Phy_EnterRxMode();
         }
     }
 }
 
-
 void USBPD_Phy_Run(void)
 {
     TIM_ITConfig(TIM1, TIM_IT_Update, DISABLE);
-    currentDeltaTimer = lastDeltaTime - USBPD_Tim_Ms_Cnt;
+    currentDeltaTimer = USBPD_Tim_Ms_Cnt - lastDeltaTime;
     lastDeltaTime = USBPD_Tim_Ms_Cnt;
     TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
     totalDeltaTime += currentDeltaTimer;
     if (totalDeltaTime > 4)
     {
         totalDeltaTime = 0;
-        USBPD_Detect_Check();
+        USBPD_Phy_Detect_Check();
     }
     USBPD_PE_Run();
 }

@@ -1,5 +1,6 @@
 #include "usbpd_helper.h"
 #include "debug.h"
+#include "pd_pdo.h"
 
 static void USBPD_PrintFixedPDO(const uint8_t index, const uint32_t raw)
 {
