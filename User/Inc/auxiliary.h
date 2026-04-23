@@ -8,6 +8,7 @@
 #define LED1_PORT GPIOA
 #define LED2_PIN GPIO_Pin_15
 #define LED2_PORT GPIOB
+
 #define AMSEL_PIN GPIO_Pin_0
 #define AMSEL_PORT GPIOB
 #define EN_PIN GPIO_Pin_7

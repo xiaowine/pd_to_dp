@@ -13,9 +13,9 @@ void USBPD_Tim_Init(void)
     RCC_PB1PeriphClockCmd(RCC_PB1Periph_TIM4, ENABLE);
 
     TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
-    TIM_TimeBaseInitStructure.TIM_Prescaler = 1;
+    TIM_TimeBaseInitStructure.TIM_Prescaler = 95; // 96MHz/(1+1)=48MHz
     TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    TIM_TimeBaseInitStructure.TIM_Period = 47999;
+    TIM_TimeBaseInitStructure.TIM_Period = 999; // 48MHz/(47999+1)=1kHz
     TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
     TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
     TIM_TimeBaseInit(TIM4, &TIM_TimeBaseInitStructure);

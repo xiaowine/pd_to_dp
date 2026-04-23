@@ -65,7 +65,6 @@ void USBPD_PE_Run(void)
         default: break;
         }
         USBPD_Control.Flag.Msg_Recvd = 0;
-        USBPD_Phy_EnterRxMode();
     }
 }
 
@@ -86,6 +85,8 @@ __attribute__((interrupt("WCH-Interrupt-fast")))void USBPD_IRQHandler(void)
     {
         PRINT("IF_RX_RESET\r\n");
         USBPD_STATUS_CLEAR_FLAG(IF_RX_RESET);
+        /* RX 状态异常时重新进入接收模式，避免卡死在异常状态 */
+        USBPD_Phy_EnterRxMode();
     }
     if (USBPD_STATUS_HAS_FLAG(IF_TX_END))
     {

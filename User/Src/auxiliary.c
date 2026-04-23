@@ -3,7 +3,7 @@
 
 void AUXILIARY_Init(void)
 {
-    RCC_PB2PeriphClockCmd(RCC_PB2Periph_GPIOA | RCC_PB2Periph_GPIOB, ENABLE);
+    RCC_PB2PeriphClockCmd(RCC_PB2Periph_GPIOA | RCC_PB2Periph_GPIOB | RCC_PB2Periph_AFIO | RCC_PB2Periph_TIM1, ENABLE);
 
     GPIO_InitTypeDef GPIO_InitStructure = {0};
     GPIO_InitStructure.GPIO_Pin = KEY_PIN;
@@ -12,11 +12,11 @@ void AUXILIARY_Init(void)
     GPIO_Init(KEY_PORT, &GPIO_InitStructure);
 
     GPIO_InitStructure.GPIO_Pin = LED1_PIN;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
     GPIO_Init(LED1_PORT, &GPIO_InitStructure);
-    GPIO_SetBits(LED1_PORT, LED1_PIN);
 
     GPIO_InitStructure.GPIO_Pin = LED2_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
     GPIO_Init(LED2_PORT, &GPIO_InitStructure);
     GPIO_SetBits(LED2_PORT, LED2_PIN);
 
@@ -49,6 +49,26 @@ void AUXILIARY_Init(void)
     EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
+
+
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure = {0};
+    TIM_TimeBaseInitStructure.TIM_Prescaler = 9499; // 96MHz/(9499+1)=10kHz
+    TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM_TimeBaseInitStructure.TIM_Period = 9999; // 10KHz/(9999+1)=1Hz
+    TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+    TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
+    TIM_TimeBaseInit(TIM1, &TIM_TimeBaseInitStructure);
+
+    TIM_OCInitTypeDef TIM_OCInitStructure = {0};
+    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+    TIM_OCInitStructure.TIM_Pulse = 0;
+    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; // 开漏输出低电平导通，驱动外部 LED
+    TIM_OC1Init(TIM1, &TIM_OCInitStructure);
+    TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
+    TIM_ARRPreloadConfig(TIM1, ENABLE);
+    TIM_CtrlPWMOutputs(TIM1, ENABLE);
+    TIM_Cmd(TIM1, ENABLE);
 }
 
 

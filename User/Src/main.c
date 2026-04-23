@@ -19,21 +19,21 @@ void USBPD_Phy_Detect_EventCallback(const PD_DetectEventType event, const uint8_
         {
             U2D2_Normal();
             PRINT("CC1 Attached\r\n");
-            GPIO_ResetBits(LED1_PORT, LED1_PIN);
-            GPIO_SetBits(LED2_PORT, LED2_PIN);
+            TIM_SetCompare1(TIM1, 3000);
+            // GPIO_SetBits(LED2_PORT, LED2_PIN);
         }
         else
         {
             U2D2_Flipped();
             PRINT("CC2 Attached\r\n");
-            GPIO_SetBits(LED1_PORT, LED1_PIN);
-            GPIO_ResetBits(LED2_PORT, LED2_PIN);
+            TIM_SetCompare1(TIM1, 6000);
+            // GPIO_ResetBits(LED2_PORT, LED2_PIN);
         }
     }
     else
     {
-        GPIO_SetBits(LED1_PORT, LED1_PIN);
-        GPIO_SetBits(LED2_PORT, LED2_PIN);
+        TIM_SetCompare1(TIM1, 0);
+        // GPIO_SetBits(LED2_PORT, LED2_PIN);
         PRINT("Detached\r\n");
     }
 }
