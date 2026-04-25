@@ -3,6 +3,8 @@
 
 #include "ch32l103.h"
 
+#define CC_INVALID 0xFFu
+
 typedef enum
 {
     PD_EVENT_DETACH = 0u,

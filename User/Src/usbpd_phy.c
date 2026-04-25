@@ -18,6 +18,8 @@ void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t so
     USBPD->CONFIG |= PD_ALL_CLR;
     USBPD->CONFIG &= ~PD_ALL_CLR;
 
+    USBPD->CONFIG |= IE_TX_END;
+    USBPD->CONFIG &= ~(IE_RX_ACT | IE_RX_RESET);
     USBPD->BMC_CLK_CNT = UPD_TMR_TX_96M;
     USBPD->DMA = (uint32_t)pbuf;
     USBPD->CONTROL |= PD_TX_EN;
@@ -40,7 +42,8 @@ void USBPD_Phy_EnterRxMode(void)
     USBPD_CC_LVE_ENABLE_SELECTED();
     USBPD->CONFIG |= PD_ALL_CLR;
     USBPD->CONFIG &= ~PD_ALL_CLR;
-
+    USBPD->CONFIG |= IE_RX_ACT | IE_RX_RESET;
+    USBPD->CONFIG &= ~IE_TX_END;
     USBPD->BMC_CLK_CNT = UPD_TMR_RX_96M;
     USBPD->DMA = (uint32_t)s_rx_buf;
     USBPD->CONTROL &= ~PD_TX_EN;
@@ -68,7 +71,7 @@ void USBPD_Phy_Init(void)
     GPIO_Init(USBPD_CC_GPIO_PORT, &GPIO_InitStructure);
 
     AFIO->CR |= USBPD_IN_HVT;
-    USBPD->CONFIG |= IE_RX_ACT | IE_RX_RESET | PD_DMA_EN;
+    USBPD->CONFIG |= PD_DMA_EN;
     USBPD->CONFIG &= ~CC_SEL;
     USBPD->STATUS &= BMC_AUX_INVALID;
     USBPD->PORT_CC1 |= CC_PD;
@@ -95,7 +98,7 @@ void USBPD_Phy_Detect_Check(void)
     USBPD->PORT_CC1 &= ~CC_LVE;
     USBPD->PORT_CC2 &= ~CC_LVE;
 
-    uint8_t ret = 0xFFu;
+    uint8_t ret = CC_INVALID;
     const uint8_t cc1 = USBPD_GetCcCmpFlags(&USBPD->PORT_CC1, USBPD_CC_GPIO_PORT, USBPD_CC1_GPIO_PIN);
     const uint8_t cc2 = USBPD_GetCcCmpFlags(&USBPD->PORT_CC2, USBPD_CC_GPIO_PORT, USBPD_CC2_GPIO_PIN);
     if (USBPD_CC_IS_0P22_TO_2P20V(cc1) && !USBPD_CC_IS_GE_0P22V(cc2))
@@ -109,9 +112,10 @@ void USBPD_Phy_Detect_Check(void)
     }
     if (USBPD_Control.Flag.Connected)
     {
+        const uint8_t sel_cc = USBPD->CONFIG & CC_SEL;
         /* 已连接时，ret 需要与当前选中的 CC 通道一致，否则判定为异常/疑似断开 */
-        if ((!(USBPD->CONFIG & CC_SEL) && ret == DEF_PD_CC1) ||
-            (USBPD->CONFIG & CC_SEL && ret == DEF_PD_CC2))
+        if ((!sel_cc && ret == DEF_PD_CC1) ||
+            (sel_cc & CC_SEL && ret == DEF_PD_CC2))
         {
             USBPD_Control.Det_Cnt = 0;
         }
@@ -131,7 +135,7 @@ void USBPD_Phy_Detect_Check(void)
     }
     else
     {
-        if (ret == 0xFFu)
+        if (ret == CC_INVALID)
         {
             USBPD_Control.Det_Cnt = 0;
         }

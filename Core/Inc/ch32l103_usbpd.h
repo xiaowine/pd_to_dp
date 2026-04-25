@@ -240,6 +240,8 @@ typedef enum
     STA_TX_HRST, /* 32: Send hardware reset */
     STA_PHY_RST, /* 33: PHY reset */
     STA_APD_IDLE_WAIT, /* 34: Waiting for the adapter to become idle */
+    STA_TX_GOODCRC, /* 35: Send GOODCRC */
+     STA_RX_GOODCRC_WAIT, /* 36: Waiting to receive GOODCRC */
 } CC_STATUS;
 
 /******************************************************************************/
