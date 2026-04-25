@@ -2,6 +2,7 @@
 #include <string.h>
 #include "pd_pdo.h"
 #include "pd_rdo.h"
+#include "pd_vdm.h"
 #include "tim.h"
 #include "usbpd_phy.h"
 #include "usbpd_helper.h"
@@ -26,6 +27,113 @@ void USBPD_PE_Reset(void)
     USBPD_Control.Flag.PD_Comm_Succ = 0;
 }
 
+void STA_Connect(void)
+{
+    USBPD_Control.PD_Comm_Timer += USBPD_Tim_Ms_Cnt;
+    if (USBPD_Control.PD_Comm_Timer > 999)
+    {
+        USBPD_Control.PD_Comm_Timer = 0;
+        USBPD_Control.Err_Op_Cnt++;
+        if (USBPD_Control.Err_Op_Cnt > 5)
+        {
+            USBPD_Control.Err_Op_Cnt = 0;
+            USBPD_Control.PD_State = STA_IDLE;
+        }
+        else
+        {
+            USBPD_PE_Reset();
+        }
+    }
+}
+
+void STA_Tx_GoodCRC(void)
+{
+    const Message_Header header = {
+        .Message_Header = {
+            .MsgType = DEF_TYPE_GOODCRC,
+            .NumDO = 0,
+            .PDRole = USBPD_Control.Flag.PD_Role,
+            .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
+            .PRRole = USBPD_Control.Flag.PR_Role,
+            .MsgID = last_rx_header.Message_Header.MsgID & 0x07u,
+            .Ext = 0,
+        }
+    };
+    memcpy(pe_tx_buf, &header.raw, 2);
+    USBPD_Phy_TxPacket(pe_tx_buf, 2, UPD_SOP0, 1);
+    SWITCH_PD_STATE(STA_IDLE);
+}
+
+void STA_Req(void)
+{
+    const uint8_t pdo_index = USBPD_FIND_5V_PDO(pe_rx_buf);
+    if (pdo_index)
+    {
+        const Message_Header header = {
+            .Message_Header = {
+                .MsgType = DEF_TYPE_REQUEST,
+                .NumDO = 1,
+                .PDRole = USBPD_Control.Flag.PD_Role,
+                .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
+                .PRRole = USBPD_Control.Flag.PR_Role,
+                .MsgID = USBPD_Control.Msg_ID & 0x07u,
+                .Ext = 0,
+            }
+        };
+
+        /* USBPD_FIND_5V_PDO guarantees selected PDO is Fixed 5V. */
+        const uint32_t pdo_raw = USBPD_READ_LE32(&pe_rx_buf[2u + (uint8_t)((pdo_index - 1u) * 4u)]);
+        USBPD_PDO_Fixed5V_Source fpdo;
+        fpdo.Raw = pdo_raw;
+        const uint32_t op_cur = fpdo.Bit.MaxCurrentIn10mA;
+        const USBPD_RDO_FixedVariable rdo_obj = {
+            .Bit.MaxOperatingCurrentIn10mA = op_cur,
+            .Bit.OperatingCurrentIn10mA = op_cur,
+            .Bit.USBCommCapable = 1,
+            .Bit.NoUSBSuspend = 1,
+            .Bit.ObjectPosition = (uint32_t)(pdo_index & 0x0Fu),
+        };
+        memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
+        memcpy(&pe_tx_buf[2], &rdo_obj.Raw, sizeof(rdo_obj.Raw));
+        USBPD_Phy_TxPacket(pe_tx_buf, 6, UPD_SOP0, 1);
+        USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+    }
+    SWITCH_PD_STATE(STA_IDLE);
+}
+
+void STA_Vdm(void)
+{
+    PRINT("Processing Vendor Defined Message\r\n");
+    USBPD_VDMHeaderStructured vdm_header = {0};
+    memcpy(&vdm_header.Raw, &pe_rx_buf[2], sizeof(vdm_header.Raw));
+    if (vdm_header.Bit.VDMType)
+    {
+        if (vdm_header.Bit.CommandType == USBPD_SVDM_CMDTYPE_REQ)
+        {
+            const Message_Header header = {
+                .Message_Header = {
+                    .MsgType = DEF_TYPE_VENDOR_DEFINED,
+                    .NumDO = 1,
+                    .PDRole = USBPD_Control.Flag.PD_Role,
+                    .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
+                    .PRRole = USBPD_Control.Flag.PR_Role,
+                    .MsgID = USBPD_Control.Msg_ID & 0x07u,
+                    .Ext = 0,
+                }
+            };
+            vdm_header.Bit.CommandType = USBPD_SVDM_CMDTYPE_NAK;
+            memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
+            memcpy(&pe_tx_buf[2], &vdm_header.Raw, sizeof(vdm_header.Raw));
+            USBPD_Phy_TxPacket(pe_tx_buf, 6, UPD_SOP0, 1);
+            USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+        }
+        else if (vdm_header.Bit.CommandType == USBPD_SVDM_CMDTYPE_ACK)
+        {
+        }
+    }
+    SWITCH_PD_STATE(STA_IDLE);
+}
+
 void USBPD_PE_Run(void)
 {
     switch (USBPD_Control.PD_State)
@@ -36,76 +144,22 @@ void USBPD_PE_Run(void)
         }
     case STA_SRC_CONNECT:
         {
-            USBPD_Control.PD_Comm_Timer += USBPD_Tim_Ms_Cnt;
-            if (USBPD_Control.PD_Comm_Timer > 999)
-            {
-                USBPD_Control.PD_Comm_Timer = 0;
-                USBPD_Control.Err_Op_Cnt++;
-                if (USBPD_Control.Err_Op_Cnt > 5)
-                {
-                    USBPD_Control.Err_Op_Cnt = 0;
-                    USBPD_Control.PD_State = STA_IDLE;
-                }
-                else
-                {
-                    USBPD_PE_Reset();
-                }
-            }
+            STA_Connect();
             break;
         }
     case STA_TX_GOODCRC:
         {
-            const Message_Header header = {
-                .Message_Header = {
-                    .MsgType = DEF_TYPE_GOODCRC,
-                    .NumDO = 0,
-                    .PDRole = USBPD_Control.Flag.PD_Role,
-                    .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
-                    .PRRole = USBPD_Control.Flag.PR_Role,
-                    .MsgID = last_rx_header.Message_Header.MsgID & 0x07u,
-                    .Ext = 0,
-                }
-            };
-            memcpy(pe_tx_buf, &header.raw, 2);
-            USBPD_Phy_TxPacket(pe_tx_buf, 2, UPD_SOP0, 1);
-            SWITCH_PD_STATE(STA_IDLE);
+            STA_Tx_GoodCRC();
             break;
         }
     case STA_TX_REQ:
         {
-            const uint8_t pdo_index = USBPD_FIND_5V_PDO(pe_rx_buf);
-            if (pdo_index)
-            {
-                const Message_Header header = {
-                    .Message_Header = {
-                        .MsgType = DEF_TYPE_REQUEST,
-                        .NumDO = 1,
-                        .PDRole = USBPD_Control.Flag.PD_Role,
-                        .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
-                        .PRRole = USBPD_Control.Flag.PR_Role,
-                        .MsgID = USBPD_Control.Msg_ID & 0x07u,
-                        .Ext = 0,
-                    }
-                };
-
-                /* USBPD_FIND_5V_PDO guarantees selected PDO is Fixed 5V. */
-                const uint32_t pdo_raw = USBPD_READ_LE32(&pe_rx_buf[2u + (uint8_t)((pdo_index - 1u) * 4u)]);
-                USBPD_PDO_Fixed5V_Source fpdo;
-                fpdo.Raw = pdo_raw;
-                const uint32_t op_cur = fpdo.Bit.MaxCurrentIn10mA;
-                const USBPD_RDO_FixedVariable rdo_obj = {
-                    .Bit.MaxOperatingCurrentIn10mA = op_cur,
-                    .Bit.OperatingCurrentIn10mA = op_cur,
-                    .Bit.USBCommCapable = 1,
-                    .Bit.NoUSBSuspend = 1,
-                    .Bit.ObjectPosition = (uint32_t)(pdo_index & 0x0Fu),
-                };
-                memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
-                memcpy(&pe_tx_buf[2], &rdo_obj.Raw, sizeof(rdo_obj.Raw));
-                USBPD_Phy_TxPacket(pe_tx_buf, 6, UPD_SOP0, 1);
-                USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
-                SWITCH_PD_STATE(STA_IDLE);
-            }
+            STA_Req();
+            break;
+        }
+    case STA_VDM:
+        {
+            STA_Vdm();
             break;
         }
     default: break;
@@ -137,7 +191,6 @@ void USBPD_PE_Run(void)
             case DEF_TYPE_PS_RDY:
                 {
                     PRINT("PS_RDY received\r\n");
-                    USBPD_Phy_EnterRxMode();
                     break;
                 }
             case DEF_TYPE_GOODCRC:
@@ -160,7 +213,7 @@ void USBPD_PE_Run(void)
                 }
             case DEF_TYPE_VENDOR_DEFINED:
                 {
-                    PRINT("Vendor Defined Message received\r\n");
+                    SWITCH_PD_STATE(STA_VDM);
                     break;
                 }
             default: break;
@@ -198,6 +251,7 @@ __attribute__((interrupt("WCH-Interrupt-fast")))void USBPD_IRQHandler(void)
     {
         PRINT("IF_TX_END\r\n");
         USBPD_STATUS_CLEAR_FLAG(IF_TX_END);
+        USBPD_Phy_EnterRxMode();
     }
     if (USBPD_STATUS_HAS_FLAG(BUF_ERR))
     {

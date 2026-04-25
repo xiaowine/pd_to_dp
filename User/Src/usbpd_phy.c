@@ -37,6 +37,7 @@ void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t so
     USBPD->BMC_TX_SZ = len;
     if (sync_mode)
     {
+        NVIC_DisableIRQ(USBPD_IRQn);
         uint32_t timeout = 2000000u;
         while (!USBPD_STATUS_HAS_FLAG(IF_TX_END))
         {
@@ -63,6 +64,8 @@ void USBPD_Phy_EnterRxMode(void)
     USBPD->CONTROL &= ~PD_TX_EN;
     USBPD->STATUS &= BMC_AUX_INVALID;
     USBPD->CONTROL |= BMC_START;
+
+    NVIC_EnableIRQ(USBPD_IRQn);
 }
 
 void USBPD_Phy_SetRxBuffer(uint8_t* buf)
@@ -98,7 +101,7 @@ void USBPD_Phy_Init(void)
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
-    NVIC_EnableIRQ(USBPD_IRQn);
+    NVIC_DisableIRQ(USBPD_IRQn);
 }
 
 __attribute__((weak)) void USBPD_Phy_Detect_EventCallback(const PD_DetectEventType event, const uint8_t cc)
@@ -176,6 +179,7 @@ void USBPD_Phy_Detect_Check(void)
                 SWITCH_PD_STATE(STA_SRC_CONNECT);
             }
             USBPD_Phy_TxPacket(NULL, 0, UPD_HARD_RESET, 1); /* 发送 Hard Reset 并等待发送完成 */
+            // USBPD_Phy_TxPacket(NULL, 0, UPD_SOP0, 0);
             USBPD_Phy_EnterRxMode();
         }
     }
