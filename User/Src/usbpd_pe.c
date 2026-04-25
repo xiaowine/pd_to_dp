@@ -8,7 +8,7 @@
 
 __attribute__ ((aligned(4))) uint8_t pe_rx_buf[PD_BUF_SIZE];
 __attribute__ ((aligned(4))) uint8_t pe_tx_buf[PD_BUF_SIZE];
-
+Message_Header last_rx_header = {0};
 
 void USBPD_PE_Init(void)
 {
@@ -55,17 +55,20 @@ void USBPD_PE_Run(void)
         }
     case STA_TX_GOODCRC:
         {
-            Message_Header header = {0};
-            header.Message_Header.MsgType = DEF_TYPE_GOODCRC;
-            header.Message_Header.NumDO = 0;
-            header.Message_Header.PDRole = USBPD_Control.Flag.PD_Role;
-            header.Message_Header.SpecRev = USBPD_Control.Flag.PD_Version;
-            header.Message_Header.PRRole = USBPD_Control.Flag.PR_Role;
-            header.Message_Header.MsgID = USBPD_Control.Msg_ID & 0x07u;
+            const Message_Header header = {
+                .Message_Header = {
+                    .MsgType = DEF_TYPE_GOODCRC,
+                    .NumDO = 0,
+                    .PDRole = USBPD_Control.Flag.PD_Role,
+                    .SpecRev = USBPD_Control.Flag.PD_Version,
+                    .PRRole = USBPD_Control.Flag.PR_Role,
+                    .MsgID = USBPD_Control.Msg_ID & 0x07u,
+                    .Ext = 0,
+                }
+            };
             memcpy(pe_tx_buf, &header.raw, 2);
             USBPD_Phy_TxPacket(pe_tx_buf, 2, UPD_SOP0, 1);
             SWITCH_PD_STATE(STA_IDLE);
-            USBPD_Phy_EnterRxMode();
             break;
         }
     case STA_TX_REQ:
@@ -76,7 +79,7 @@ void USBPD_PE_Run(void)
                 const Message_Header header = {
                     .Message_Header = {
                         .MsgType = DEF_TYPE_REQUEST,
-                        .NumDO = 0,
+                        .NumDO = 1,
                         .PDRole = USBPD_Control.Flag.PD_Role,
                         .SpecRev = USBPD_Control.Flag.PD_Version,
                         .PRRole = USBPD_Control.Flag.PR_Role,
@@ -97,12 +100,11 @@ void USBPD_PE_Run(void)
                     .Bit.NoUSBSuspend = 1,
                     .Bit.ObjectPosition = (uint32_t)(pdo_index & 0x0Fu),
                 };
-                memset(pe_tx_buf, 0, sizeof(pe_tx_buf));
                 memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
                 memcpy(&pe_tx_buf[2], &rdo_obj.Raw, sizeof(rdo_obj.Raw));
-                USBPD_Phy_TxPacket(pe_tx_buf, sizeof(pe_tx_buf),UPD_SOP0, 1);
+                USBPD_Phy_TxPacket(pe_tx_buf, 6, UPD_SOP0, 1);
+                USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
                 SWITCH_PD_STATE(STA_IDLE);
-                USBPD_Phy_EnterRxMode();
             }
             break;
         }
@@ -110,22 +112,54 @@ void USBPD_PE_Run(void)
     }
     if (USBPD_Control.Flag.Msg_Recvd)
     {
-        switch (USBPD_MSG_TYPE_FROM_HEADER(pe_rx_buf))
+        const uint8_t msg_type = USBPD_MSG_TYPE_FROM_HEADER(pe_rx_buf);
+
+        /* NumDO==0: Control Message, NumDO>0: Data Message */
+        if (last_rx_header.Message_Header.NumDO == 0u)
         {
-        case DEF_TYPE_SRC_CAP:
+            switch (msg_type)
             {
-                SWITCH_PD_STATE(STA_TX_REQ);
-                USBPD_PDO_Analyse(pe_rx_buf);
-                break;
+            case DEF_TYPE_SOFT_RESET:
+                {
+                    USBPD_PE_Reset();
+                    break;
+                }
+            case DEF_TYPE_ACCEPT:
+                {
+                    PRINT("ACCEPT received\r\n");
+                    break;
+                }
+            case DEF_TYPE_REJECT:
+                {
+                    PRINT("REJECT received\r\n");
+                    break;
+                }
+            case DEF_TYPE_PS_RDY:
+                {
+                    PRINT("PS_RDY received\r\n");
+                    break;
+                }
+            case DEF_TYPE_GOODCRC:
+                {
+                    PRINT("GOODCRC received\r\n");
+                    break;
+                }
+            default: break;
             }
-        case DEF_TYPE_SOFT_RESET:
-            {
-                USBPD_PE_Reset();
-                break;
-            }
-        default: break;
         }
-        USBPD_Control.Msg_ID++;
+        else
+        {
+            switch (msg_type)
+            {
+            case DEF_TYPE_SRC_CAP:
+                {
+                    SWITCH_PD_STATE(STA_TX_REQ);
+                    USBPD_PDO_Analyse(pe_rx_buf);
+                    break;
+                }
+            default: break;
+            }
+        }
         USBPD_Control.Flag.Msg_Recvd = 0;
     }
 }
@@ -135,12 +169,16 @@ __attribute__((interrupt("WCH-Interrupt-fast")))void USBPD_IRQHandler(void)
     if (USBPD_STATUS_HAS_FLAG(IF_RX_ACT))
     {
         USBPD_STATUS_CLEAR_FLAG(IF_RX_ACT);
-        Message_Header header = {0};
-        header.raw = USBPD_READ_LE16(pe_rx_buf);
-        // GOODCRC 报文的 NumDO 字段为 0，且报文类型为 GOODCRC 时不通知主程序接收消息，以免干扰正常通信流程中的 GOODCRC 应答
-        if (!(header.Message_Header.NumDO == 0u && header.Message_Header.MsgType == DEF_TYPE_GOODCRC))
+        if (USBPD_STATUS_IS_SOP0())
         {
-            SWITCH_PD_STATE(STA_TX_GOODCRC);
+            last_rx_header.raw = USBPD_READ_LE16(pe_rx_buf);
+            USBPD_Control.Msg_ID = last_rx_header.Message_Header.MsgID;
+            // // GOODCRC 报文的 NumDO 字段为 0，且报文类型为 GOODCRC 时不通知主程序接收消息，以免干扰正常通信流程中的 GOODCRC 应答
+            if (!(last_rx_header.Message_Header.NumDO == 0u && last_rx_header.Message_Header.MsgType ==
+                DEF_TYPE_GOODCRC))
+            {
+                SWITCH_PD_STATE(STA_TX_GOODCRC);
+            }
             USBPD_Control.Flag.Msg_Recvd = 1;
         }
     }

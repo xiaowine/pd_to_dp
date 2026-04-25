@@ -18,7 +18,15 @@ void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t so
     USBPD->CONFIG |= PD_ALL_CLR;
     USBPD->CONFIG &= ~PD_ALL_CLR;
 
-    USBPD->CONFIG |= IE_TX_END;
+    if (sync_mode)
+    {
+        /* Synchronous send uses polling to avoid racing with TX_END ISR clear. */
+        USBPD->CONFIG &= ~IE_TX_END;
+    }
+    else
+    {
+        USBPD->CONFIG |= IE_TX_END;
+    }
     USBPD->CONFIG &= ~(IE_RX_ACT | IE_RX_RESET);
     USBPD->BMC_CLK_CNT = UPD_TMR_TX_96M;
     USBPD->DMA = (uint32_t)pbuf;
@@ -29,11 +37,17 @@ void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t so
     USBPD->BMC_TX_SZ = len;
     if (sync_mode)
     {
+        uint32_t timeout = 2000000u;
         while (!USBPD_STATUS_HAS_FLAG(IF_TX_END))
         {
+            if (--timeout == 0u)
+            {
+                break;
+            }
         }
         USBPD_STATUS_CLEAR_FLAG(IF_TX_END);
         USBPD_CC_LVE_DISABLE_SELECTED();
+        USBPD_Phy_EnterRxMode();
     }
 }
 
