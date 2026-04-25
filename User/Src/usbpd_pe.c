@@ -13,6 +13,7 @@ Message_Header last_rx_header = {0};
 void USBPD_PE_Init(void)
 {
     USBPD_Phy_SetRxBuffer(pe_rx_buf);
+    USBPD_Control.Flag.PD_Version = 1; /* 默认使用 PD3.0 版本进行通信 */
 }
 
 void USBPD_PE_Reset(void)
@@ -21,7 +22,6 @@ void USBPD_PE_Reset(void)
     USBPD_Control.Flag.PR_Role = 0;
     USBPD_Control.Flag.PD_Role = 0;
     USBPD_Control.Flag.Auto_Ack_PRRole = 0;
-    USBPD_Control.Flag.PD_Version = 0;
     USBPD_Control.Flag.VDM_Version = 0;
     USBPD_Control.Flag.PD_Comm_Succ = 0;
 }
@@ -60,9 +60,9 @@ void USBPD_PE_Run(void)
                     .MsgType = DEF_TYPE_GOODCRC,
                     .NumDO = 0,
                     .PDRole = USBPD_Control.Flag.PD_Role,
-                    .SpecRev = USBPD_Control.Flag.PD_Version,
+                    .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
                     .PRRole = USBPD_Control.Flag.PR_Role,
-                    .MsgID = USBPD_Control.Msg_ID & 0x07u,
+                    .MsgID = last_rx_header.Message_Header.MsgID & 0x07u,
                     .Ext = 0,
                 }
             };
@@ -81,7 +81,7 @@ void USBPD_PE_Run(void)
                         .MsgType = DEF_TYPE_REQUEST,
                         .NumDO = 1,
                         .PDRole = USBPD_Control.Flag.PD_Role,
-                        .SpecRev = USBPD_Control.Flag.PD_Version,
+                        .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
                         .PRRole = USBPD_Control.Flag.PR_Role,
                         .MsgID = USBPD_Control.Msg_ID & 0x07u,
                         .Ext = 0,
@@ -137,6 +137,7 @@ void USBPD_PE_Run(void)
             case DEF_TYPE_PS_RDY:
                 {
                     PRINT("PS_RDY received\r\n");
+                    USBPD_Phy_EnterRxMode();
                     break;
                 }
             case DEF_TYPE_GOODCRC:
@@ -157,6 +158,11 @@ void USBPD_PE_Run(void)
                     USBPD_PDO_Analyse(pe_rx_buf);
                     break;
                 }
+            case DEF_TYPE_VENDOR_DEFINED:
+                {
+                    PRINT("Vendor Defined Message received\r\n");
+                    break;
+                }
             default: break;
             }
         }
@@ -172,7 +178,6 @@ __attribute__((interrupt("WCH-Interrupt-fast")))void USBPD_IRQHandler(void)
         if (USBPD_STATUS_IS_SOP0())
         {
             last_rx_header.raw = USBPD_READ_LE16(pe_rx_buf);
-            USBPD_Control.Msg_ID = last_rx_header.Message_Header.MsgID;
             // // GOODCRC 报文的 NumDO 字段为 0，且报文类型为 GOODCRC 时不通知主程序接收消息，以免干扰正常通信流程中的 GOODCRC 应答
             if (!(last_rx_header.Message_Header.NumDO == 0u && last_rx_header.Message_Header.MsgType ==
                 DEF_TYPE_GOODCRC))
