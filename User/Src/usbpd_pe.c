@@ -2,10 +2,10 @@
 #include <string.h>
 #include "pd_pdo.h"
 #include "pd_rdo.h"
-#include "pd_vdm.h"
 #include "tim.h"
 #include "usbpd_phy.h"
 #include "usbpd_helper.h"
+#include "usbpd_vdm.h"
 
 __attribute__ ((aligned(4))) uint8_t pe_rx_buf[PD_BUF_SIZE];
 __attribute__ ((aligned(4))) uint8_t pe_tx_buf[PD_BUF_SIZE];
@@ -103,34 +103,7 @@ void STA_Req(void)
 
 void STA_Vdm(void)
 {
-    PRINT("Processing Vendor Defined Message\r\n");
-    USBPD_VDMHeaderStructured vdm_header = {0};
-    memcpy(&vdm_header.Raw, &pe_rx_buf[2], sizeof(vdm_header.Raw));
-    if (vdm_header.Bit.VDMType)
-    {
-        if (vdm_header.Bit.CommandType == USBPD_SVDM_CMDTYPE_REQ)
-        {
-            const Message_Header header = {
-                .Message_Header = {
-                    .MsgType = DEF_TYPE_VENDOR_DEFINED,
-                    .NumDO = 1,
-                    .PDRole = USBPD_Control.Flag.PD_Role,
-                    .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
-                    .PRRole = USBPD_Control.Flag.PR_Role,
-                    .MsgID = USBPD_Control.Msg_ID & 0x07u,
-                    .Ext = 0,
-                }
-            };
-            vdm_header.Bit.CommandType = USBPD_SVDM_CMDTYPE_NAK;
-            memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
-            memcpy(&pe_tx_buf[2], &vdm_header.Raw, sizeof(vdm_header.Raw));
-            USBPD_Phy_TxPacket(pe_tx_buf, 6, UPD_SOP0, 1);
-            USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
-        }
-        else if (vdm_header.Bit.CommandType == USBPD_SVDM_CMDTYPE_ACK)
-        {
-        }
-    }
+    USBPD_VDM_Handle(pe_rx_buf, pe_tx_buf, &last_rx_header);
     SWITCH_PD_STATE(STA_IDLE);
 }
 
@@ -207,12 +180,14 @@ void USBPD_PE_Run(void)
             {
             case DEF_TYPE_SRC_CAP:
                 {
+                    PRINT("SRC_CAP received\r\n");
                     SWITCH_PD_STATE(STA_TX_REQ);
                     USBPD_PDO_Analyse(pe_rx_buf);
                     break;
                 }
             case DEF_TYPE_VENDOR_DEFINED:
                 {
+                    PRINT("Vendor Defined Message received\r\n");
                     SWITCH_PD_STATE(STA_VDM);
                     break;
                 }

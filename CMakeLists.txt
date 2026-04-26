@@ -44,6 +44,8 @@ set(USER_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_helper.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_phy.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_pe.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_vdm.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_vdm_debug.c"
 )
 
 add_executable(${PROJECT_NAME}
