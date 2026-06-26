@@ -18,9 +18,7 @@ static uint32_t USBPD_BuildDPStatusVDO(const USBPD_HPDStatus* hpd_status)
 
     status_vdo.Bit.Connected = USBPD_DP_CONNECTED_SINK;
     status_vdo.Bit.Enabled = 1u;
-#if USBPD_DP_LANE_MODE == USBPD_DP_LANE_MODE_2LANE
-    status_vdo.Bit.MultiFunctionPreferred = 1u;
-#endif
+    status_vdo.Bit.MultiFunctionPreferred = (USBPD_DP_GetLaneMode() == USBPD_DP_LANE_MODE_2LANE) ? 1u : 0u;
 
     if (hpd_status->logical_high)
     {

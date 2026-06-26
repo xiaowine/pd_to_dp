@@ -4,6 +4,7 @@
 #include "tim.h"
 #include "vl171.h"
 #include "usbpd_phy.h"
+#include "usbpd_vdm.h"
 
 uint8_t Tmr_Ms_Dlt = 0; // 系统计时器毫秒计时这次的增量值
 uint8_t Tmr_Ms_Cnt_Last = 0; // 系统计时器毫秒计时上一次的值
@@ -22,7 +23,6 @@ void USBPD_Phy_Detect_EventCallback(const PD_DetectEventType event, const uint8_
             VL171_ApplyMode(VL171_MODE_USB_DP_2LANE);
             PRINT("CC1 Attached\r\n");
             TIM_SetCompare1(TIM1, 6000);
-            // GPIO_SetBits(LED2_PORT, LED2_PIN);
         }
         else
         {
@@ -30,15 +30,23 @@ void USBPD_Phy_Detect_EventCallback(const PD_DetectEventType event, const uint8_
             VL171_ApplyMode(VL171_MODE_USB_DP_2LANE);
             PRINT("CC2 Attached\r\n");
             TIM_SetCompare1(TIM1, 9000);
-            // GPIO_ResetBits(LED2_PORT, LED2_PIN);
         }
     }
     else
     {
         TIM_SetCompare1(TIM1, 0);
-        // GPIO_SetBits(LED2_PORT, LED2_PIN);
         PRINT("Detached\r\n");
     }
+}
+
+static void App_SetStartupLaneMode(void)
+{
+    const USBPD_DPLaneMode mode = BoardIO_IsKeyPressed() ?
+        USBPD_DP_LANE_MODE_4LANE : USBPD_DP_LANE_MODE_2LANE;
+
+    USBPD_DP_SetLaneMode(mode);
+    BoardIO_SetLaneIndicator(mode == USBPD_DP_LANE_MODE_4LANE);
+    PRINT("DP lane mode: %u-lane\r\n", (unsigned)mode);
 }
 
 /*********************************************************************
@@ -60,6 +68,7 @@ int main(void)
     USBPD_Tim_Init();
     // USBPD_Init();
     BoardIO_Init();
+    App_SetStartupLaneMode();
     USBPD_Phy_Init();
 
     while (1)

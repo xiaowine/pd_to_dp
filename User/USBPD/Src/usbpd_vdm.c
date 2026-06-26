@@ -29,14 +29,14 @@ const USBPD_VDMIdentityDefinition USBPD_VDM_IDENTITY = {
  * 该结构只描述“我们能接受/声明什么”，不做任何硬件动作。
  * 实际收到 Configure 后是否切 VL171、是否打开 HPD 检测，由 usbpd_vdm_handler.c 决定。
  */
-const USBPD_DPAltModeDefinition USBPD_DP_ALT_MODE = {
+USBPD_DPAltModeDefinition USBPD_DP_ALT_MODE = {
     .svid = USBPD_DP_SVID, /* Discover SVIDs ACK 返回的 DP SVID: 0xFF01。 */
     .object_position = USBPD_DP_OBJECT_POSITION_1, /* 当前只返回一个 DP Mode，因此 Object Position 固定为 1。 */
     .mode_vdo.Bit = {
         .PortCapability = USBPD_DP_PORT_UFP_D, /* 声明本设备 USB-C 口可作为 DP Sink/UFP_D。 */
         .Signaling = USBPD_DP_SIGNAL_DP, /* 声明支持 DP bit rate 和 DP 电气设置。 */
         .ReceptacleIndication = 1u, /* 声明 DP 接口呈现在 Type-C receptacle 上。 */
-        .UFP_DPinAssignments = USBPD_DP_UFP_D_PIN_ASSIGNMENT, /* 按 USBPD_DP_LANE_MODE 声明 Pin C 或 D。 */
+        .UFP_DPinAssignments = USBPD_DP_PIN_ASSIGN_C, /* 默认声明 Pin C，也就是 4-lane DP。 */
     },
     .supported_configurations = {
         {
@@ -50,9 +50,35 @@ const USBPD_DPAltModeDefinition USBPD_DP_ALT_MODE = {
             .Bit = {
                 .SelectConfiguration = USBPD_DP_SELECT_UFP_D_SINK, /* 允许对端把本设备配置为 DP Sink。 */
                 .Signaling = USBPD_DP_SIGNAL_DP, /* DP Configuration 下使用 DP signaling。 */
-                .PinAssignment = USBPD_DP_UFP_D_PIN_ASSIGNMENT, /* 按 USBPD_DP_LANE_MODE 接受 Pin C 或 D。 */
+                .PinAssignment = USBPD_DP_PIN_ASSIGN_C, /* 默认接受 Pin C，也就是 4-lane DP。 */
             },
         },
     },
     .supported_configuration_count = 2u, /* 上面配置白名单的有效条目数量。 */
 };
+
+static USBPD_DPLaneMode s_dp_lane_mode = USBPD_DP_LANE_MODE_4LANE;
+
+void USBPD_DP_SetLaneMode(USBPD_DPLaneMode mode)
+{
+    const uint8_t pin_assignment =
+        (mode == USBPD_DP_LANE_MODE_2LANE) ? USBPD_DP_PIN_ASSIGN_D : USBPD_DP_PIN_ASSIGN_C;
+
+    s_dp_lane_mode = (mode == USBPD_DP_LANE_MODE_2LANE) ? USBPD_DP_LANE_MODE_2LANE : USBPD_DP_LANE_MODE_4LANE;
+    USBPD_DP_ALT_MODE.mode_vdo.Bit.UFP_DPinAssignments = pin_assignment;
+    USBPD_DP_ALT_MODE.supported_configurations[1].Bit.PinAssignment = pin_assignment;
+}
+
+USBPD_DPLaneMode USBPD_DP_GetLaneMode(void)
+{
+    return s_dp_lane_mode;
+}
+
+USBPD_DPLaneMode USBPD_DP_ToggleLaneMode(void)
+{
+    const USBPD_DPLaneMode next_mode =
+        (s_dp_lane_mode == USBPD_DP_LANE_MODE_2LANE) ? USBPD_DP_LANE_MODE_4LANE : USBPD_DP_LANE_MODE_2LANE;
+
+    USBPD_DP_SetLaneMode(next_mode);
+    return next_mode;
+}

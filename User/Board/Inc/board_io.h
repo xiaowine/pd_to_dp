@@ -23,6 +23,8 @@
 #define HPD_PORT GPIOB
 
 void BoardIO_Init(void);
+void BoardIO_SetLaneIndicator(uint8_t is_4lane);
+uint8_t BoardIO_IsKeyPressed(void);
 uint8_t DP_HPD_IsHigh(void);
 void DP_HPD_EnableInterrupt(void);
 void DP_HPD_DisableInterrupt(void);
