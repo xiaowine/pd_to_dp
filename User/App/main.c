@@ -1,8 +1,9 @@
-#include "auxiliary.h"
+#include "board_io.h"
 #include "ch32l103.h"
 #include "debug.h"
 #include "tim.h"
-#include "../Inc/usbpd_phy.h"
+#include "vl171.h"
+#include "usbpd_phy.h"
 
 uint8_t Tmr_Ms_Dlt = 0; // 系统计时器毫秒计时这次的增量值
 uint8_t Tmr_Ms_Cnt_Last = 0; // 系统计时器毫秒计时上一次的值
@@ -58,7 +59,7 @@ int main(void)
     PRINT("PD SNK TEST\r\n");
     USBPD_Tim_Init();
     // USBPD_Init();
-    AUXILIARY_Init();
+    BoardIO_Init();
     USBPD_Phy_Init();
 
     while (1)

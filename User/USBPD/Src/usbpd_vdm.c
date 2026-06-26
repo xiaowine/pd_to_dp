@@ -2,11 +2,12 @@
 
 #include <string.h>
 
+#include "board_io.h"
 #include "pd_vdm.h"
-#include "auxiliary.h"
 #include "usbpd_helper.h"
 #include "usbpd_phy.h"
 #include "usbpd_vdm_debug.h"
+#include "vl171.h"
 
 /* 本文件实现 USB PD Structured VDM 处理，以及 DisplayPort Alt Mode 的最小应答流程。 */
 

@@ -32,24 +32,19 @@ set(COMMON_DEFINES
 )
 
 set(USER_INCLUDE_DIRS
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Board/Inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Drivers/Inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/USBPD/Inc"
 )
 
-set(USER_SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/debug.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/main.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/tim.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/ch32l103_it.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/system.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_helper.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_phy.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_pe.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_vdm.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/User/Src/usbpd_vdm_debug.c"
+file(GLOB USER_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/App/*.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Board/Src/*.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/Drivers/Src/*.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/USBPD/Src/*.c"
 )
 
-add_executable(${PROJECT_NAME}
-        User/Src/auxiliary.c)
+add_executable(${PROJECT_NAME})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}" SUFFIX ".elf")
 
 target_sources(${PROJECT_NAME} PRIVATE
