@@ -17,14 +17,16 @@ void USBPD_Phy_Detect_EventCallback(const PD_DetectEventType event, const uint8_
     {
         if (cc == DEF_PD_CC1)
         {
-            U2D2_Normal();
+            VL171_SetOrientation(VL171_ORIENTATION_NORMAL);
+            VL171_ApplyMode(VL171_MODE_USB_DP_2LANE);
             PRINT("CC1 Attached\r\n");
             TIM_SetCompare1(TIM1, 6000);
             // GPIO_SetBits(LED2_PORT, LED2_PIN);
         }
         else
         {
-            U2D2_Flipped();
+            VL171_SetOrientation(VL171_ORIENTATION_FLIPPED);
+            VL171_ApplyMode(VL171_MODE_USB_DP_2LANE);
             PRINT("CC2 Attached\r\n");
             TIM_SetCompare1(TIM1, 9000);
             // GPIO_ResetBits(LED2_PORT, LED2_PIN);

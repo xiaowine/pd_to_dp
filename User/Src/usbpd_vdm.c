@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "pd_vdm.h"
+#include "auxiliary.h"
 #include "usbpd_helper.h"
 #include "usbpd_phy.h"
 #include "usbpd_vdm_debug.h"
@@ -41,10 +42,10 @@
 /* Mode VDO bit[23:16]：声明作为 DP Sink 时支持 pin assignment E。 */
 #define USBPD_DP_CAP_SNK_PIN_ASSIGN_E  0x00100000u
 
-/* 声明本端为 DP Sink(UFP_D)，支持 C/D/E 三组 Sink pin assignment。 */
+/* 诊断用：只暴露 4-lane DP-only 的 Pin Assignment C。 */
 #define USBPD_DP_CAP_MODE_VDO \
     (USBPD_DP_CAP_PORT_UFP_D | USBPD_DP_CAP_SIGNALING_DP | USBPD_DP_CAP_RECEPTACLE | \
-     USBPD_DP_CAP_SNK_PIN_ASSIGN_C | USBPD_DP_CAP_SNK_PIN_ASSIGN_D | USBPD_DP_CAP_SNK_PIN_ASSIGN_E)
+     USBPD_DP_CAP_SNK_PIN_ASSIGN_C)
 
 /* Status VDO bit[1:0]：当前连接状态为对端已连接到本端的 DP Sink。 */
 #define USBPD_DP_STATUS_CONNECT_DP_SINK    0x00000002u
@@ -73,35 +74,29 @@
 /* 根据当前控制状态拼出本端要回传的 DP Status VDO。 */
 static uint32_t USBPD_BuildDPStatusVDO(void)
 {
-    /* 按当前状态构造本端回复的 DP Status VDO。 */
-    uint32_t status_vdo = USBPD_DP_STATUS_CONNECT_DP_SINK | USBPD_DP_STATUS_ENABLED |
-            USBPD_DP_STATUS_MULTI_FUNCTION;
+    uint32_t status_vdo = USBPD_DP_STATUS_CONNECT_DP_SINK | USBPD_DP_STATUS_ENABLED;
 
-    if (USBPD_Control.Flag.HPD_Connected)
+    if (DP_HPD_IsHigh())
     {
         status_vdo |= USBPD_DP_STATUS_HPD_HIGH;
     }
 
+    PRINT("HPD GPIO PB14=%u\r\n", (unsigned)DP_HPD_IsHigh());
     return status_vdo;
 }
 
 /* 判断对端给出的 Configure VDO 是否在本端支持范围内。 */
 static uint8_t USBPD_IsSupportedDPConfigure(uint32_t config_vdo)
 {
-    /* 仅接受 USB 配置或 DP Sink 模式下的 C/D/E pin assignment。 */
+    /* 仅接受 USB 配置或 DP Sink 模式下的 C pin assignment。 */
     const uint32_t config_mask = 0x0000FC3Fu;
     const uint32_t usb_cfg = USBPD_DP_CONFIG_SELECT_USB;
     const uint32_t dp_cfg_c = USBPD_DP_CONFIG_SELECT_UFP_D | USBPD_DP_CONFIG_SIGNAL_DP |
             USBPD_DP_CONFIG_PIN_ASSIGN_C;
-    const uint32_t dp_cfg_d = USBPD_DP_CONFIG_SELECT_UFP_D | USBPD_DP_CONFIG_SIGNAL_DP |
-            USBPD_DP_CONFIG_PIN_ASSIGN_D;
-    const uint32_t dp_cfg_e = USBPD_DP_CONFIG_SELECT_UFP_D | USBPD_DP_CONFIG_SIGNAL_DP |
-            USBPD_DP_CONFIG_PIN_ASSIGN_E;
 
     config_vdo &= config_mask;
 
-    return (uint8_t)((config_vdo == usb_cfg) || (config_vdo == dp_cfg_c) || (config_vdo == dp_cfg_d) ||
-        (config_vdo == dp_cfg_e));
+    return (uint8_t)((config_vdo == usb_cfg) || (config_vdo == dp_cfg_c));
 }
 
 /* 构造一个标准 USB PD Data Message Header，供 VDM 发送路径复用。 */
@@ -265,7 +260,6 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
             if (last_header->Message_Header.NumDO > 1u)
             {
                 const uint32_t status_vdo = USBPD_READ_LE32(&rx_buf[6]);
-                USBPD_Control.Flag.HPD_Connected = (uint8_t)((status_vdo & 0x1u) ? 1u : 0u);
                 USBPD_LogDPStatusVDO("RX ", status_vdo);
             }
             break;
@@ -282,7 +276,6 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
             if (last_header->Message_Header.NumDO > 1u)
             {
                 const uint32_t status_vdo = USBPD_READ_LE32(&rx_buf[6]);
-                USBPD_Control.Flag.HPD_Connected = (uint8_t)((status_vdo & 0x1u) ? 1u : 0u);
                 USBPD_LogDPStatusVDO("RX ", status_vdo);
             }
 
@@ -327,6 +320,7 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
             }
             else
             {
+                VL171_ApplyDPPinAssignment(config_vdo);
                 USBPD_Control.Flag.HPD_Det_Chk = 1u;
             }
             USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);

@@ -1,6 +1,8 @@
 #ifndef AUXILIARY_H
 #define AUXILIARY_H
 
+#include <stdint.h>
+
 #define KEY_PIN GPIO_Pin_0
 #define KEY_PORT GPIOA
 
@@ -15,11 +17,25 @@
 #define EN_PORT GPIOA
 #define POL_PIN GPIO_Pin_5
 #define POL_PORT GPIOA
+#define HPD_PIN GPIO_Pin_14
+#define HPD_PORT GPIOB
+
+typedef enum
+{
+    VL171_ORIENTATION_NORMAL = 0u,
+    VL171_ORIENTATION_FLIPPED = 1u,
+} VL171_Orientation;
+
+typedef enum
+{
+    VL171_MODE_USB_DP_2LANE = 0u,
+    VL171_MODE_DP_4LANE = 1u,
+} VL171_Mode;
 
 void AUXILIARY_Init(void);
-void U2D2_Normal(void);
-void U2D2_Flipped(void);
-void U0D4_Normal(void);
-void U0D4_Flipped(void);
+void VL171_SetOrientation(VL171_Orientation orientation);
+void VL171_ApplyMode(VL171_Mode mode);
+void VL171_ApplyDPPinAssignment(uint32_t config_vdo);
+uint8_t DP_HPD_IsHigh(void);
 
 #endif //AUXILIARY_H
