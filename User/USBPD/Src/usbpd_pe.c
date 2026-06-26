@@ -5,7 +5,7 @@
 #include "tim.h"
 #include "usbpd_phy.h"
 #include "usbpd_helper.h"
-#include "usbpd_vdm.h"
+#include "usbpd_vdm_handler.h"
 
 __attribute__ ((aligned(4))) uint8_t pe_rx_buf[PD_BUF_SIZE];
 __attribute__ ((aligned(4))) uint8_t pe_tx_buf[PD_BUF_SIZE];
@@ -25,6 +25,10 @@ void USBPD_PE_Reset(void)
     USBPD_Control.Flag.Auto_Ack_PRRole = 0;
     USBPD_Control.Flag.VDM_Version = 0;
     USBPD_Control.Flag.PD_Comm_Succ = 0;
+    USBPD_Control.Flag.HPD_Connected = 0;
+    USBPD_Control.Flag.HPD_Det_Chk = 0;
+    USBPD_Control.Flag.DP_Attention_Pending = 0;
+    USBPD_Control.Flag.HPD_Low_Pending = 0;
 }
 
 void STA_Connect(void)
@@ -195,6 +199,11 @@ void USBPD_PE_Run(void)
             }
         }
         USBPD_Control.Flag.Msg_Recvd = 0;
+    }
+
+    if (!USBPD_Control.Flag.Msg_Recvd && USBPD_Control.PD_State == STA_IDLE)
+    {
+        USBPD_VDM_TrySendAttention(pe_tx_buf);
     }
 }
 

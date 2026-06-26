@@ -1,8 +1,11 @@
 #include "usbpd_phy.h"
 #include <string.h>
+#include "debug.h"
 #include "usbpd_helper.h"
 #include "tim.h"
 #include "usbpd_pe.h"
+
+#define USBPD_T_INTER_FRAME_GAP_US 25u
 
 uint8_t currentDeltaTimer = 0; // 当前系统计时器毫秒计时的增量值
 uint8_t totalDeltaTime = 0; // 系统计时器毫秒计时的总递增值
@@ -14,6 +17,12 @@ uint8_t* s_rx_buf;
 
 void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t sop, const uint8_t sync_mode)
 {
+    /*
+     * USB PD tInterFrameGap: 上一帧最后一位到下一帧 Preamble 第一位至少 25us。
+     * 所有 PD Packet 统一从 PHY 发送入口等待，避免各个上层状态分散处理。
+     */
+    Delay_Us(USBPD_T_INTER_FRAME_GAP_US);
+
     USBPD_CC_LVE_ENABLE_SELECTED();
     USBPD->CONFIG |= PD_ALL_CLR;
     USBPD->CONFIG &= ~PD_ALL_CLR;

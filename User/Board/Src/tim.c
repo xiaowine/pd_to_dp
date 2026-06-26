@@ -2,6 +2,7 @@
 #include "ch32l103_tim.h"
 
 volatile uint8_t USBPD_Tim_Ms_Cnt = 0u;
+static volatile uint16_t s_usbpd_tim_us16 = 0u;
 
 /**
  *  @fn Tim_Init
@@ -32,6 +33,22 @@ void USBPD_Tim_Init(void)
     TIM_Cmd(TIM4, ENABLE);
 }
 
+uint16_t USBPD_Tim_GetUs16(void)
+{
+    uint16_t base_before = 0u;
+    uint16_t base_after = 0u;
+    uint16_t us = 0u;
+
+    do
+    {
+        base_before = s_usbpd_tim_us16;
+        us = (uint16_t)TIM_GetCounter(TIM4);
+        base_after = s_usbpd_tim_us16;
+    } while (base_before != base_after);
+
+    return (uint16_t)(base_before + us);
+}
+
 /**
  * @fn      TIM4_IRQHandler
  * @brief   TIM4 interrupt handler
@@ -43,6 +60,7 @@ __attribute__((interrupt("WCH-Interrupt-fast"))) void TIM4_IRQHandler(void)
     {
         TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
         USBPD_Tim_Ms_Cnt++;
+        s_usbpd_tim_us16 = (uint16_t)(s_usbpd_tim_us16 + 1000u);
         // PRINT("Timer interrupt\r\n" );
     }
 }

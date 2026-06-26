@@ -2,11 +2,7 @@
 
 #include "board_io.h"
 #include "debug.h"
-
-#define VL171_DP_CONFIG_PIN_ASSIGN_MASK 0x0000FF00u
-#define VL171_DP_CONFIG_PIN_ASSIGN_C    0x00000400u
-#define VL171_DP_CONFIG_PIN_ASSIGN_D    0x00000800u
-#define VL171_DP_CONFIG_PIN_ASSIGN_E    0x00001000u
+#include "pd_dp_alt_mode.h"
 
 static VL171_Orientation s_vl171_orientation = VL171_ORIENTATION_NORMAL;
 
@@ -92,14 +88,17 @@ void VL171_ApplyMode(VL171_Mode mode)
 
 void VL171_ApplyDPPinAssignment(uint32_t config_vdo)
 {
-    switch (config_vdo & VL171_DP_CONFIG_PIN_ASSIGN_MASK)
+    USBPD_DPConfigureVDO config = {0};
+
+    config.Raw = config_vdo;
+    switch (config.Bit.PinAssignment)
     {
-    case VL171_DP_CONFIG_PIN_ASSIGN_C:
-    case VL171_DP_CONFIG_PIN_ASSIGN_E:
+    case USBPD_DP_PIN_ASSIGN_C:
+    case USBPD_DP_PIN_ASSIGN_E:
         VL171_ApplyMode(VL171_MODE_DP_4LANE);
         break;
 
-    case VL171_DP_CONFIG_PIN_ASSIGN_D:
+    case USBPD_DP_PIN_ASSIGN_D:
         VL171_ApplyMode(VL171_MODE_USB_DP_2LANE);
         break;
 
