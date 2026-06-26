@@ -33,9 +33,35 @@ static void BoardIO_InitHPD(void)
     GPIO_InitTypeDef gpio = {0};
 
     gpio.GPIO_Pin = HPD_PIN;
-    gpio.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    gpio.GPIO_Mode = GPIO_Mode_IPD;
     gpio.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(HPD_PORT, &gpio);
+}
+
+static void BoardIO_ConfigHPDInterrupt(FunctionalState state)
+{
+    EXTI_InitTypeDef exti = {0};
+
+    exti.EXTI_Line = EXTI_Line14;
+    exti.EXTI_Mode = EXTI_Mode_Interrupt;
+    exti.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    exti.EXTI_LineCmd = state;
+    EXTI_Init(&exti);
+}
+
+static void BoardIO_InitHPDInterrupt(void)
+{
+    NVIC_InitTypeDef nvic = {0};
+
+    nvic.NVIC_IRQChannel = EXTI15_10_IRQn;
+    nvic.NVIC_IRQChannelPreemptionPriority = 0;
+    nvic.NVIC_IRQChannelSubPriority = 3;
+    nvic.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvic);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource14);
+    EXTI_ClearITPendingBit(EXTI_Line14);
+    BoardIO_ConfigHPDInterrupt(DISABLE);
 }
 
 static void BoardIO_InitKeyInterrupt(void)
@@ -91,6 +117,7 @@ void BoardIO_Init(void)
     BoardIO_InitLeds();
     VL171_Init();
     BoardIO_InitHPD();
+    BoardIO_InitHPDInterrupt();
     BoardIO_InitKeyInterrupt();
     BoardIO_InitLedPwm();
 }
@@ -100,11 +127,36 @@ uint8_t DP_HPD_IsHigh(void)
     return (GPIO_ReadInputDataBit(HPD_PORT, HPD_PIN) != Bit_RESET) ? 1u : 0u;
 }
 
+void DP_HPD_EnableInterrupt(void)
+{
+    EXTI_ClearITPendingBit(EXTI_Line14);
+    BoardIO_ConfigHPDInterrupt(ENABLE);
+}
+
+void DP_HPD_DisableInterrupt(void)
+{
+    BoardIO_ConfigHPDInterrupt(DISABLE);
+    EXTI_ClearITPendingBit(EXTI_Line14);
+}
+
+__attribute__((weak)) void DP_HPD_EdgeCallback(void)
+{
+}
+
 __attribute__((interrupt("WCH-Interrupt-fast"))) void EXTI0_IRQHandler(void)
 {
     if (EXTI_GetITStatus(EXTI_Line0) != RESET)
     {
         EXTI_ClearITPendingBit(EXTI_Line0);
         PRINT("KEY Pressed\r\n");
+    }
+}
+
+__attribute__((interrupt("WCH-Interrupt-fast"))) void EXTI15_10_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line14) != RESET)
+    {
+        EXTI_ClearITPendingBit(EXTI_Line14);
+        DP_HPD_EdgeCallback();
     }
 }

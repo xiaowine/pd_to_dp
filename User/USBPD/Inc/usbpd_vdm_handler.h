@@ -14,8 +14,8 @@ void USBPD_VDM_Handle(const uint8_t* rx_buf, uint8_t* tx_buf, const Message_Head
 
 /*
  * DP Alt Mode 主动 Attention 发送轮询。
- * 当 Configure 后 HPD 仍为低时，处理逻辑会置 DP_Attention_Pending。
- * 状态机空闲后调用此函数；如果 HPD 已拉高，则主动发送 Attention 通知 DFP_U。
+ * 状态机空闲后调用此函数；HPD 控制器检测到 HPD 高/低变化或 IRQ_HPD 时，
+ * 这里负责把该事件转换成 DP Attention 通知 DFP_U。
  */
 void USBPD_VDM_TrySendAttention(uint8_t* tx_buf);
 

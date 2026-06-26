@@ -4,6 +4,26 @@
 #include <stdint.h>
 #include "pd_dp_alt_mode.h"
 
+#define USBPD_DP_LANE_MODE_2LANE 2u
+#define USBPD_DP_LANE_MODE_4LANE 4u
+
+/*
+ * 选择本固件对外声明并接受的 DP lane 配置：
+ * - USBPD_DP_LANE_MODE_4LANE: Pin Assignment C，4-lane DP，不保留 USB3。
+ * - USBPD_DP_LANE_MODE_2LANE: Pin Assignment D，2-lane DP + USB3。
+ */
+#ifndef USBPD_DP_LANE_MODE
+#define USBPD_DP_LANE_MODE USBPD_DP_LANE_MODE_4LANE
+#endif
+
+#if USBPD_DP_LANE_MODE == USBPD_DP_LANE_MODE_2LANE
+#define USBPD_DP_UFP_D_PIN_ASSIGNMENT USBPD_DP_PIN_ASSIGN_D
+#elif USBPD_DP_LANE_MODE == USBPD_DP_LANE_MODE_4LANE
+#define USBPD_DP_UFP_D_PIN_ASSIGNMENT USBPD_DP_PIN_ASSIGN_C
+#else
+#error "USBPD_DP_LANE_MODE must be USBPD_DP_LANE_MODE_2LANE or USBPD_DP_LANE_MODE_4LANE"
+#endif
+
 /*
  * Discover Identity ACK 中需要用到的本设备身份信息。
  * 这里保存的是“定义值”，实际打包成 ID Header VDO / Product VDO / UFP VDO

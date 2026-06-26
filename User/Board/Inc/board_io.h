@@ -24,5 +24,8 @@
 
 void BoardIO_Init(void);
 uint8_t DP_HPD_IsHigh(void);
+void DP_HPD_EnableInterrupt(void);
+void DP_HPD_DisableInterrupt(void);
+void DP_HPD_EdgeCallback(void);
 
 #endif

@@ -36,7 +36,7 @@ const USBPD_DPAltModeDefinition USBPD_DP_ALT_MODE = {
         .PortCapability = USBPD_DP_PORT_UFP_D, /* 声明本设备 USB-C 口可作为 DP Sink/UFP_D。 */
         .Signaling = USBPD_DP_SIGNAL_DP, /* 声明支持 DP bit rate 和 DP 电气设置。 */
         .ReceptacleIndication = 1u, /* 声明 DP 接口呈现在 Type-C receptacle 上。 */
-        .UFP_DPinAssignments = USBPD_DP_PIN_ASSIGN_C, /* 作为 DP Sink/UFP_D 时支持 Pin Assignment C。 */
+        .UFP_DPinAssignments = USBPD_DP_UFP_D_PIN_ASSIGNMENT, /* 按 USBPD_DP_LANE_MODE 声明 Pin C 或 D。 */
     },
     .supported_configurations = {
         {
@@ -50,7 +50,7 @@ const USBPD_DPAltModeDefinition USBPD_DP_ALT_MODE = {
             .Bit = {
                 .SelectConfiguration = USBPD_DP_SELECT_UFP_D_SINK, /* 允许对端把本设备配置为 DP Sink。 */
                 .Signaling = USBPD_DP_SIGNAL_DP, /* DP Configuration 下使用 DP signaling。 */
-                .PinAssignment = USBPD_DP_PIN_ASSIGN_C, /* 当前硬件/固件只接受 Pin Assignment C。 */
+                .PinAssignment = USBPD_DP_UFP_D_PIN_ASSIGNMENT, /* 按 USBPD_DP_LANE_MODE 接受 Pin C 或 D。 */
             },
         },
     },

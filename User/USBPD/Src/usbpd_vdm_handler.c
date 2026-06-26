@@ -2,39 +2,41 @@
 
 #include <string.h>
 
-#include "board_io.h"
 #include "pd_dp_alt_mode.h"
 #include "pd_vdm.h"
-#include "tim.h"
 #include "usbpd_helper.h"
+#include "usbpd_hpd.h"
 #include "usbpd_phy.h"
 #include "usbpd_vdm.h"
 #include "usbpd_vdm_debug.h"
 #include "vl171.h"
 
-#define USBPD_HPD_IRQ_MIN_US       250u
-#define USBPD_HPD_UNPLUG_MIN_US    2000u
-
 /* 根据当前控制状态拼出本端要回传的 DP Status VDO。 */
-static uint32_t USBPD_BuildDPStatusVDO(uint8_t hpd_high, uint8_t irq_hpd)
+static uint32_t USBPD_BuildDPStatusVDO(const USBPD_HPDStatus* hpd_status)
 {
     USBPD_DPStatusVDO status_vdo = {0};
 
     status_vdo.Bit.Connected = USBPD_DP_CONNECTED_SINK;
     status_vdo.Bit.Enabled = 1u;
+#if USBPD_DP_LANE_MODE == USBPD_DP_LANE_MODE_2LANE
+    status_vdo.Bit.MultiFunctionPreferred = 1u;
+#endif
 
-    if (hpd_high)
+    if (hpd_status->logical_high)
     {
         status_vdo.Bit.HPDState = 1u;
     }
 
-    if (irq_hpd)
+    if (hpd_status->irq_hpd)
     {
         status_vdo.Bit.HPDState = 1u;
         status_vdo.Bit.IRQ_HPD = 1u;
     }
 
-    PRINT("HPD GPIO PB14=%u IRQ=%u\r\n", (unsigned)hpd_high, (unsigned)irq_hpd);
+    PRINT("HPD Status: Logical=%u GPIO PB14=%u IRQ=%u\r\n",
+          (unsigned)status_vdo.Bit.HPDState,
+          (unsigned)hpd_status->gpio_high,
+          (unsigned)status_vdo.Bit.IRQ_HPD);
     return status_vdo.Raw;
 }
 
@@ -125,11 +127,11 @@ static void USBPD_ReplyStructuredVDM(uint8_t* tx_buf, USBPD_VDMHeaderStructured*
     USBPD_SendStructuredVDMResponse(tx_buf, vdm_header, num_vdos, vdo_list);
 }
 
-static void USBPD_SendDPAttention(uint8_t* tx_buf, uint8_t hpd_high, uint8_t irq_hpd)
+static void USBPD_SendDPAttention(uint8_t* tx_buf, const USBPD_HPDStatus* hpd_status)
 {
     USBPD_VDMHeaderStructured vdm_header = {0};
     const uint32_t vdos[] = {
-        USBPD_BuildDPStatusVDO(hpd_high, irq_hpd),
+        USBPD_BuildDPStatusVDO(hpd_status),
     };
 
     vdm_header.Bit.Command = USBPD_SVDM_CMD_ATTENTION;
@@ -146,73 +148,44 @@ static void USBPD_SendDPAttention(uint8_t* tx_buf, uint8_t hpd_high, uint8_t irq
 
 void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
 {
-    if (!USBPD_Control.Flag.Connected || !USBPD_Control.Flag.HPD_Det_Chk)
+    USBPD_HPDEvent hpd_event = {0};
+
+    if (!USBPD_Control.Flag.Connected || !USBPD_HPD_IsEnabled())
     {
-        USBPD_Control.Flag.HPD_Low_Pending = 0u;
         return;
     }
 
-    const uint8_t hpd_high = DP_HPD_IsHigh();
-    const uint16_t now_us = USBPD_Tim_GetUs16();
-
-    if (USBPD_Control.Flag.DP_Attention_Pending)
+    if (!USBPD_HPD_PollEvent(&hpd_event))
     {
-        if (!hpd_high)
+        return;
+    }
+
+    switch (hpd_event.type)
+    {
+    case USBPD_HPD_EVENT_HIGH:
+        {
+            PRINT("HPD high, send Attention\r\n");
+            break;
+        }
+    case USBPD_HPD_EVENT_LOW:
+        {
+            PRINT("HPD low, send Attention: low_us=%u\r\n", (unsigned)hpd_event.status.low_us);
+            break;
+        }
+    case USBPD_HPD_EVENT_IRQ:
+        {
+            PRINT("HPD IRQ, send Attention: low_us=%u\r\n", (unsigned)hpd_event.status.low_us);
+            break;
+        }
+    default:
         {
             return;
         }
-
-        USBPD_Control.Flag.DP_Attention_Pending = 0u;
-        USBPD_Control.Flag.HPD_Connected = 1u;
-        USBPD_Control.Flag.HPD_Low_Pending = 0u;
-        PRINT("HPD high, send Attention\r\n");
-        USBPD_SendDPAttention(tx_buf, 1u, 0u);
-        return;
     }
 
-    if (USBPD_Control.Flag.HPD_Connected)
-    {
-        if (!hpd_high)
-        {
-            if (!USBPD_Control.Flag.HPD_Low_Pending)
-            {
-                USBPD_Control.Flag.HPD_Low_Pending = 1u;
-                USBPD_Control.HPD_Low_StartUs = now_us;
-                return;
-            }
-
-            if ((uint16_t)(now_us - USBPD_Control.HPD_Low_StartUs) >= USBPD_HPD_UNPLUG_MIN_US)
-            {
-                USBPD_Control.Flag.HPD_Connected = 0u;
-                USBPD_Control.Flag.HPD_Low_Pending = 0u;
-                PRINT("HPD low, send Attention\r\n");
-                USBPD_SendDPAttention(tx_buf, 0u, 0u);
-            }
-            return;
-        }
-
-        if (USBPD_Control.Flag.HPD_Low_Pending)
-        {
-            const uint16_t low_us = (uint16_t)(now_us - USBPD_Control.HPD_Low_StartUs);
-            USBPD_Control.Flag.HPD_Low_Pending = 0u;
-            if (low_us >= USBPD_HPD_IRQ_MIN_US && low_us < USBPD_HPD_UNPLUG_MIN_US)
-            {
-                PRINT("HPD IRQ, send Attention: low_us=%u\r\n", (unsigned)low_us);
-                USBPD_SendDPAttention(tx_buf, 1u, 1u);
-            }
-        }
-        return;
-    }
-
-    if (hpd_high)
-    {
-        USBPD_Control.Flag.HPD_Connected = 1u;
-        USBPD_Control.Flag.HPD_Low_Pending = 0u;
-        PRINT("HPD high, send Attention\r\n");
-        USBPD_SendDPAttention(tx_buf, 1u, 0u);
-    }
+    USBPD_SendDPAttention(tx_buf, &hpd_event.status);
+    USBPD_HPD_RecordReported(hpd_event.status.logical_high);
 }
-
 
 /* 处理 Structured VDM Request，覆盖 DP Alt Mode 枚举和配置相关命令。 */
 static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_buf, const Message_Header* last_header,
@@ -292,7 +265,7 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
 
             /* 进入 DP 模式后打开 HPD 检测。 */
             USBPD_Control.Mode_Try_Cnt |= 0x80u;
-            USBPD_Control.Flag.HPD_Det_Chk = 1u;
+            USBPD_HPD_EnterMode();
             USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);
             break;
         }
@@ -300,10 +273,7 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
         {
             /* 退出 DP 模式后清掉进入标志并停止 HPD 检测。 */
             USBPD_Control.Mode_Try_Cnt &= (uint8_t)~0x80u;
-            USBPD_Control.Flag.HPD_Det_Chk = 0u;
-            USBPD_Control.Flag.HPD_Connected = 0u;
-            USBPD_Control.Flag.DP_Attention_Pending = 0u;
-            USBPD_Control.Flag.HPD_Low_Pending = 0u;
+            USBPD_HPD_Disable();
             USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);
             break;
         }
@@ -332,11 +302,16 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
             }
 
             {
+                const USBPD_HPDStatus hpd_status = USBPD_HPD_ReadStatus();
                 const uint32_t vdos[] = {
-                    USBPD_BuildDPStatusVDO(DP_HPD_IsHigh(), 0u),
+                    USBPD_BuildDPStatusVDO(&hpd_status),
                 };
 
                 USBPD_LogDPStatusVDO("TX ", vdos[0]);
+                USBPD_HPD_RecordReported(hpd_status.logical_high);
+                PRINT("HPD Reported Baseline: Valid=%u Logical=%u\r\n",
+                      (unsigned)USBPD_HPD_GetReportedValid(),
+                      (unsigned)USBPD_HPD_GetReportedHigh());
                 USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 2u, vdos);
             }
             break;
@@ -372,22 +347,15 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
 
                 if (config.Bit.SelectConfiguration == USBPD_DP_SELECT_USB)
                 {
-                    USBPD_Control.Flag.HPD_Det_Chk = 0u;
-                    USBPD_Control.Flag.HPD_Connected = 0u;
-                    USBPD_Control.Flag.DP_Attention_Pending = 0u;
-                    USBPD_Control.Flag.HPD_Low_Pending = 0u;
+                    USBPD_HPD_Disable();
                 }
                 else
                 {
                     VL171_ApplyDPPinAssignment(config_vdo);
-                    USBPD_Control.Flag.HPD_Connected = DP_HPD_IsHigh();
-                    USBPD_Control.Flag.HPD_Det_Chk = 1u;
-                    USBPD_Control.Flag.DP_Attention_Pending =
-                        (USBPD_Control.Flag.HPD_Connected == 0u) ? 1u : 0u;
-                    USBPD_Control.Flag.HPD_Low_Pending = 0u;
-                    PRINT("DP Configure HPD=%u AttentionPending=%u\r\n",
-                          (unsigned)USBPD_Control.Flag.HPD_Connected,
-                          (unsigned)USBPD_Control.Flag.DP_Attention_Pending);
+                    const USBPD_HPDStatus hpd_status = USBPD_HPD_GetSnapshot();
+                    PRINT("DP Configure HPD Logical=%u GPIO PB14=%u\r\n",
+                          (unsigned)hpd_status.logical_high,
+                          (unsigned)hpd_status.gpio_high);
                 }
             }
             USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);

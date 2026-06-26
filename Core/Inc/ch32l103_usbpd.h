@@ -275,13 +275,9 @@ typedef struct
     volatile uint8_t Auto_Ack_PRRole : 1; /* 自动应答使用的电源角色 0:SINK；1:SOURCE */
     volatile uint8_t PD_Version : 1; /* PD 版本 0-PD2.0；1-PD3.0 */
     volatile uint8_t VDM_Version : 1; /* VDM 版本 0-1.0；1-2.0 */
-    volatile uint8_t HPD_Connected : 1; /* HPD 物理层连接标志 */
-    volatile uint8_t HPD_Det_Chk : 1; /* 0-关闭 HPD 连接检测；1-开启 HPD 连接检测 */
     volatile uint8_t CC_Sel_En : 1; /* 0-使能 CC 通道切换；1-禁用 CC 通道切换 */
     volatile uint8_t CC_Sel_State : 1; /* 0-CC 通道切换到 0；1-CC 通道切换到 1 */
     volatile uint8_t PD_Comm_Succ : 1; /* 0-PD 通信失败；1-PD 通信成功 */
-    volatile uint8_t DP_Attention_Pending : 1; /* DP Configure 后 HPD 仍为低，等待 HPD 拉高后主动发送 Attention */
-    volatile uint8_t HPD_Low_Pending : 1; /* HPD 已从高变低，等待区分 IRQ_HPD 还是 Hot Unplug */
     uint8_t Recv : 1;
 } BIT_FLAG;
 
@@ -294,9 +290,6 @@ typedef struct
     volatile uint8_t Det_Timer; /* PD 连接状态检测计时 */
     volatile uint8_t Det_Cnt; /* PD 连接状态检测次数 */
     volatile uint8_t Det_Sel_Cnt; /* PD 连接检测中 SEL 切换次数 */
-    volatile uint8_t HPD_Det_Timer; /* HPD 连接检测计时 */
-    volatile uint8_t HPD_Det_Cnt; /* HPD 引脚连接状态检测次数 */
-    volatile uint16_t HPD_Low_StartUs; /* HPD 低脉冲起始时间，单位 us，16 位回绕 */
     volatile uint16_t PD_Comm_Timer; /* PD 通信共享计时变量 */
     volatile uint8_t ReqPDO_Idx; /* 请求的 PDO 索引，有效值 1-7 */
     volatile uint16_t PD_BusIdle_Timer; /* 总线空闲时间计时器 */
