@@ -182,6 +182,17 @@ uint8_t USBPD_HPD_IsEnabled(void)
     return s_enabled;
 }
 
+void USBPD_HPD_QueueHighIfAsserted(void)
+{
+    if (!s_enabled || !DP_HPD_IsHigh())
+    {
+        return;
+    }
+
+    s_logical_high = 1u;
+    s_pending_high = 1u;
+}
+
 USBPD_HPDStatus USBPD_HPD_ReadStatus(void)
 {
     USBPD_HPDEvent pending_event = {0};

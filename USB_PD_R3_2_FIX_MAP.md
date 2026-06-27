@@ -79,20 +79,20 @@ Primary files:
 
 | Status | ID | Priority | Fix target |
 | --- | --- | --- | --- |
-| [~] | PD-R3.2-007 | P1 | Send `Not_Supported` for unsupported, unrecognized, and reserved messages. |
+| [x] | PD-R3.2-007 | P1 | Send `Not_Supported` for unsupported, unrecognized, and reserved messages. |
 | [x] | PD-R3.2-008 | P1 | Respond to `Get_Sink_Cap` with `Sink_Capabilities`. |
 | [ ] | PD-R3.2-016 | P1 | Classify and handle Extended/Chunked messages, including `ChunkingNotSupportedTimer`. |
 | [ ] | PD-R3.2-019 | P1 | Implement required Data Reset state machine or compliant response path. |
 | [ ] | PD-R3.2-024 | P1 | Implement required BIST message behavior. |
 | [ ] | PD-R3.2-025 | P1 | Respond to `Get_Sink_Cap_Extended` with `Sink_Capabilities_Extended`. |
 | [ ] | PD-R3.2-026 | P1 | Respond to `Get_Revision` with Revision Message. |
-| [ ] | PD-R3.2-033 | P1 | Inform DPM when `Not_Supported` is received. |
-| [ ] | PD-R3.2-040 | P1 | Inform DPM when `Alert` is received. |
-| [ ] | PD-R3.2-045 | P1 | Respond correctly to unsupported or unevaluated role-swap requests. |
-| [ ] | PD-R3.2-049 | P1 | Answer `Enter_USB` requests to the UFP. |
-| [ ] | PD-R3.2-051 | P1 | Respond correctly to `VCONN_Swap` requests. |
-| [ ] | PD-R3.2-060 | P1 | Decode messages with Header `Ext` bit as Extended Messages, not Control/Data messages. |
-| [ ] | PD-R3.2-072 | P1 | Treat unexpected recognized non-VDM Data Messages as Protocol Error or required response. |
+| [x] | PD-R3.2-033 | P1 | Inform DPM when `Not_Supported` is received. |
+| [x] | PD-R3.2-040 | P1 | Inform DPM when `Alert` is received. |
+| [x] | PD-R3.2-045 | P1 | Respond correctly to unsupported or unevaluated role-swap requests. |
+| [x] | PD-R3.2-049 | P1 | Answer `Enter_USB` requests to the UFP. |
+| [x] | PD-R3.2-051 | P1 | Respond correctly to `VCONN_Swap` requests. |
+| [x] | PD-R3.2-060 | P1 | Decode messages with Header `Ext` bit as Extended Messages, not Control/Data messages. |
+| [x] | PD-R3.2-072 | P1 | Treat unexpected recognized non-VDM Data Messages as Protocol Error or required response. |
 | [ ] | PD-R3.2-073 | P1 | Respond to `Get_Status` with required Status Extended Message. |
 
 ## 4. Common VDM and Structured VDM Framework
@@ -107,17 +107,17 @@ Primary files:
 | --- | --- | --- | --- |
 | [x] | PD-R3.2-009 | P1 | Ignore SOP VDMs until an Explicit Contract exists. |
 | [x] | PD-R3.2-010 | P1 | Send `Not_Supported` for unsupported Unstructured VDMs after Explicit Contract. |
-| [ ] | PD-R3.2-011 | P1 | Implement Structured VDM version negotiation and common-version storage. |
+| [x] | PD-R3.2-011 | P1 | Implement Structured VDM version negotiation and common-version storage. |
 | [ ] | PD-R3.2-015 | P1 | Detect and track SOP Specification Revision. |
 | [ ] | PD-R3.2-023 | P1 | Bound Structured VDM response timing by required VDM timers. |
 | [x] | PD-R3.2-027 | P1 | NAK Discover SVIDs requests whose SVID is not the PD SID. |
-| [~] | PD-R3.2-030 | P1 | NAK Structured VDM requests with invalid `NumDO`. |
+| [x] | PD-R3.2-030 | P1 | NAK Structured VDM requests with invalid `NumDO`. |
 | [x] | PD-R3.2-035 | P1 | Prevent Discover VDM responses from transmitting invalid Object Position. |
-| [ ] | PD-R3.2-036 | P1 | Inform DPM when Structured VDM Attention is received. |
+| [x] | PD-R3.2-036 | P1 | Inform DPM when Structured VDM Attention is received. |
 | [x] | PD-R3.2-041 | P1 | ACK Discover Identity only for valid PD SID request context. |
 | [x] | PD-R3.2-044 | P1 | Sanitize reserved bits in Structured VDM responses. |
 | [x] | PD-R3.2-050 | P1 | Keep Alternate Mode state across Soft Reset; reset only PD protocol scope. |
-| [ ] | PD-R3.2-052 | P1 | Sanitize Object Position in invalid-command NAKs. |
+| [x] | PD-R3.2-052 | P1 | Sanitize Object Position in invalid-command NAKs. |
 | [ ] | PD-R3.2-054 | P1 | Treat unexpected Structured VDM responses as Protocol Error. |
 | [ ] | PD-R3.2-055 | P2 | Add required Structured VDM discovery initiator support for Modal Operation. |
 | [x] | PD-R3.2-076 | P1 | NAK Structured VDM requests with invalid version fields. |
@@ -138,7 +138,7 @@ Primary files:
 | --- | --- | --- | --- |
 | [ ] | PD-R3.2-012 | P1 | Replace Discover Identity placeholder VID/PID with valid device identity values. |
 | [ ] | PD-R3.2-014 | P1 | Make Sink-initiated Attention obey SinkTxOK collision avoidance. |
-| [ ] | PD-R3.2-020 | P1 | Trigger required Hard Reset for `DR_Swap` during Modal Operation. |
+| [x] | PD-R3.2-020 | P1 | Trigger required Hard Reset for `DR_Swap` during Modal Operation. |
 | [x] | PD-R3.2-021 | P1 | Exit Active Modes and return port to USB operation on Detach. |
 | [x] | PD-R3.2-022 | P1 | NAK Exit Mode for invalid or inactive modes. |
 | [ ] | PD-R3.2-037 | P1 | Advertise supported DP signal-reconfiguration mode in Discover Identity UFP VDO. |
@@ -153,17 +153,17 @@ Primary files:
 | [x] | PD-R3.2-062 | P1 | Advertise mandatory Pin Assignment E for USB-C receptacle DP Sink. |
 | [ ] | PD-R3.2-063 | P2 | Preserve HPD queue ordering after `HPD_Low` and clear stale `IRQ_HPD`. |
 | [x] | PD-R3.2-064 | P1 | Report DP Status Enabled only when DisplayPort functionality is enabled. |
-| [ ] | PD-R3.2-065 | P1 | Do not send HPD Attention before initial DisplayPort Status exchange. |
+| [x] | PD-R3.2-065 | P1 | Do not send HPD Attention before initial DisplayPort Status exchange. |
 | [ ] | PD-R3.2-066 | P2 | Add USB Billboard path when DisplayPort Alt Mode entry fails. |
-| [ ] | PD-R3.2-067 | P1 | Re-enable HPD after returning from USB Configuration to DP Configuration. |
+| [x] | PD-R3.2-067 | P1 | Re-enable HPD after returning from USB Configuration to DP Configuration. |
 | [ ] | PD-R3.2-068 | P1 | Debounce HPD High before USB PD reporting. |
 | [ ] | PD-R3.2-071 | P1 | Debounce/filter raw HPD high before initial DP Status report. |
 | [ ] | PD-R3.2-074 | P1 | Enforce required DP Status/Configure VDO payload fields. |
-| [ ] | PD-R3.2-075 | P1 | Advertise current Structured VDM minor version for standard SVDM commands. |
+| [x] | PD-R3.2-075 | P1 | Advertise current Structured VDM minor version for standard SVDM commands. |
 | [x] | PD-R3.2-080 | P1 | Avoid entering DP Alt Mode before Enter Mode ACK transmission succeeds. |
 | [x] | PD-R3.2-081 | P1 | Remove HPD events from queue only after USB PD report succeeds. |
 | [x] | PD-R3.2-082 | P1 | Accept mandatory associated DP-only Configure pin assignment in multi-function mode. |
-| [ ] | PD-R3.2-083 | P1 | Send required HPD High Attention after DP Sink configuration completes. |
+| [x] | PD-R3.2-083 | P1 | Send required HPD High Attention after DP Sink configuration completes. |
 | [x] | PD-R3.2-089 | P1 | Accept mandatory Pin Assignment E Configure for USB-C receptacle DP Sink. |
 | [ ] | PD-R3.2-090 | P1 | Handle Exit Mode ACK loss without leaving UFP/DFP mode states inconsistent. |
 | [ ] | PD-R3.2-091 | P1 | Handle DisplayPort Configure ACK loss without leaving pin configurations inconsistent. |

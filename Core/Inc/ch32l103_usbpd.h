@@ -300,6 +300,8 @@ typedef struct
     volatile uint8_t Tx_GoodCRC_MsgID; /* 最近收到的 GoodCRC MessageID */
     volatile uint8_t Rx_Last_MsgID; /* SOP 接收端上一次 MessageID */
     volatile uint8_t HardResetCounter; /* Sink 缺失 Source_Capabilities 时的 Hard Reset 计数 */
+    volatile uint8_t SVDM_MajorVersion; /* 当前连接协商出的 Structured VDM Major Version */
+    volatile uint8_t SVDM_MinorVersion; /* 当前连接协商出的 Structured VDM Minor Version */
     volatile uint16_t PD_BusIdle_Timer; /* 总线空闲时间计时器 */
     volatile uint8_t Mode_Try_Cnt; /* 当前模式重试次数，最高位用于模式标记 */
     volatile uint8_t Err_Op_Cnt; /* 异常操作计数 */

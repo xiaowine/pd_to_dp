@@ -29,6 +29,7 @@ void USBPD_HPD_Reset(void);
 void USBPD_HPD_EnterMode(void);
 void USBPD_HPD_Disable(void);
 uint8_t USBPD_HPD_IsEnabled(void);
+void USBPD_HPD_QueueHighIfAsserted(void);
 USBPD_HPDStatus USBPD_HPD_ReadStatus(void);
 USBPD_HPDStatus USBPD_HPD_GetSnapshot(void);
 uint8_t USBPD_HPD_PollEvent(USBPD_HPDEvent* event);

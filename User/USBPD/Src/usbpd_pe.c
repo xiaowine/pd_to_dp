@@ -120,6 +120,8 @@ void USBPD_PE_Init(void)
 {
     USBPD_Phy_SetRxBuffer(pe_rx_buf);
     USBPD_Control.Flag.PD_Version = 1; /* 默认使用 PD3.0 版本进行通信 */
+    USBPD_Control.SVDM_MajorVersion = 1u;
+    USBPD_Control.SVDM_MinorVersion = 0u;
     USBPD_PE_ResetProtocolLayer();
     USBPD_PE_ResetTimer();
 }
@@ -136,6 +138,8 @@ void USBPD_PE_Reset(void)
     USBPD_Control.Flag.DP_Modes_Discovered = 0;
     USBPD_Control.Mode_Try_Cnt &= (uint8_t)~0x80u;
     USBPD_Control.HardResetCounter = 0u;
+    USBPD_Control.SVDM_MajorVersion = 1u;
+    USBPD_Control.SVDM_MinorVersion = 0u;
     USBPD_PE_ResetProtocolLayer();
     USBPD_PE_ResetTimer();
     USBPD_HPD_Reset();
@@ -381,10 +385,31 @@ void USBPD_PE_Run(void)
                     break;
                 }
             case DEF_TYPE_DR_SWAP:
+                {
+                    if (USBPD_Control.Mode_Try_Cnt & 0x80u)
+                    {
+                        USBPD_PE_SendHardResetAndWaitCaps();
+                    }
+                    else
+                    {
+                        USBPD_PE_SendControlMessage(DEF_TYPE_REJECT);
+                    }
+                    break;
+                }
             case DEF_TYPE_PR_SWAP:
             case DEF_TYPE_VCONN_SWAP:
                 {
                     USBPD_PE_SendControlMessage(DEF_TYPE_REJECT);
+                    break;
+                }
+            case DEF_TYPE_NOT_SUPPORT:
+                {
+                    PRINT("NOT_SUPPORTED received\r\n");
+                    break;
+                }
+            case DEF_TYPE_DATA_RESET:
+                {
+                    USBPD_PE_SendControlMessage(DEF_TYPE_NOT_SUPPORT);
                     break;
                 }
             default:
@@ -426,6 +451,21 @@ void USBPD_PE_Run(void)
                     {
                         USBPD_PE_StartProtocolRecovery();
                     }
+                    break;
+                }
+            case DEF_TYPE_ALERT:
+                {
+                    PRINT("ALERT received\r\n");
+                    break;
+                }
+            case DEF_TYPE_ENTER_USB:
+                {
+                    USBPD_PE_SendControlMessage(DEF_TYPE_NOT_SUPPORT);
+                    break;
+                }
+            case DEF_TYPE_BIST:
+                {
+                    USBPD_PE_SendControlMessage(DEF_TYPE_NOT_SUPPORT);
                     break;
                 }
             default:

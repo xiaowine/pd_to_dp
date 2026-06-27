@@ -11,6 +11,8 @@
 #include "usbpd_vdm_debug.h"
 #include "vl171.h"
 
+static uint8_t USBPD_SVDMCommandUsesObjectPosition(uint8_t command);
+
 /* 根据当前控制状态拼出本端要回传的 DP Status VDO。 */
 static uint32_t USBPD_BuildDPStatusVDO(const USBPD_HPDStatus* hpd_status)
 {
@@ -152,12 +154,14 @@ static uint8_t USBPD_ReplyStructuredVDM(uint8_t* tx_buf, USBPD_VDMHeaderStructur
     vdm_header->Bit.Reserved5 = 0u;
     if (vdm_header->Bit.Command == USBPD_SVDM_CMD_DISCOVER_IDENTITY ||
         vdm_header->Bit.Command == USBPD_SVDM_CMD_DISCOVER_SVIDS ||
-        vdm_header->Bit.Command == USBPD_SVDM_CMD_DISCOVER_MODES)
+        vdm_header->Bit.Command == USBPD_SVDM_CMD_DISCOVER_MODES ||
+        (command_type == USBPD_SVDM_CMDTYPE_NAK &&
+            !USBPD_SVDMCommandUsesObjectPosition(vdm_header->Bit.Command)))
     {
         vdm_header->Bit.ObjectPosition = 0u;
     }
-    vdm_header->Bit.StructuredVDMVersionMajor = USBPD_SVDM_MAJOR_2PX;
-    vdm_header->Bit.StructuredVDMVersionMinor = USBPD_SVDM_MINOR_2P0;
+    vdm_header->Bit.StructuredVDMVersionMajor = USBPD_Control.SVDM_MajorVersion;
+    vdm_header->Bit.StructuredVDMVersionMinor = USBPD_Control.SVDM_MinorVersion;
     return USBPD_SendStructuredVDMResponse(tx_buf, vdm_header, num_vdos, vdo_list);
 }
 
@@ -171,8 +175,8 @@ static uint8_t USBPD_SendDPAttention(uint8_t* tx_buf, const USBPD_HPDStatus* hpd
     vdm_header.Bit.Command = USBPD_SVDM_CMD_ATTENTION;
     vdm_header.Bit.CommandType = USBPD_SVDM_CMDTYPE_REQ;
     vdm_header.Bit.ObjectPosition = USBPD_DP_ALT_MODE.object_position;
-    vdm_header.Bit.StructuredVDMVersionMajor = USBPD_SVDM_MAJOR_2PX;
-    vdm_header.Bit.StructuredVDMVersionMinor = USBPD_SVDM_MINOR_2P0;
+    vdm_header.Bit.StructuredVDMVersionMajor = USBPD_Control.SVDM_MajorVersion;
+    vdm_header.Bit.StructuredVDMVersionMinor = USBPD_Control.SVDM_MinorVersion;
     vdm_header.Bit.VDMType = USBPD_VDM_TYPE_STRUCTURED;
     vdm_header.Bit.SVID = USBPD_DP_ALT_MODE.svid;
 
@@ -199,6 +203,27 @@ static uint8_t USBPD_SVDMVersionIsSupported(const USBPD_VDMHeaderStructured* vdm
     }
 
     return 1u;
+}
+
+static void USBPD_RecordCommonSVDMVersion(const USBPD_VDMHeaderStructured* vdm_header)
+{
+    if (vdm_header->Bit.StructuredVDMVersionMajor < USBPD_SVDM_MAJOR_2PX)
+    {
+        USBPD_Control.SVDM_MajorVersion = USBPD_SVDM_MAJOR_1P0;
+        USBPD_Control.SVDM_MinorVersion = 0u;
+        return;
+    }
+
+    USBPD_Control.SVDM_MajorVersion = USBPD_SVDM_MAJOR_2PX;
+    USBPD_Control.SVDM_MinorVersion = USBPD_SVDM_MINOR_2P0;
+}
+
+static uint8_t USBPD_SVDMCommandUsesObjectPosition(uint8_t command)
+{
+    return (command == USBPD_SVDM_CMD_ENTER_MODE ||
+            command == USBPD_SVDM_CMD_EXIT_MODE ||
+            command == USBPD_DP_CMD_STATUS_UPDATE ||
+            command == USBPD_DP_CMD_CONFIGURE) ? 1u : 0u;
 }
 
 static uint8_t USBPD_SVDMRequestHasValidShape(const Message_Header* last_header,
@@ -245,7 +270,8 @@ void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
 {
     USBPD_HPDEvent hpd_event = {0};
 
-    if (!USBPD_Control.Flag.Connected || !USBPD_HPD_IsEnabled())
+    if (!USBPD_Control.Flag.Connected || !USBPD_HPD_IsEnabled() ||
+        !USBPD_HPD_GetReportedValid())
     {
         return;
     }
@@ -307,6 +333,7 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
             USBPD_VDO_UFP ufp_vdo = {0};
             uint32_t vdos[4] = {0};
 
+            USBPD_RecordCommonSVDMVersion(vdm_header);
             id_header.Bit.USBVendorID = USBPD_VDM_IDENTITY.usb_vendor_id;
             id_header.Bit.ConnectorType = USBPD_VDM_IDENTITY.connector_type;
             id_header.Bit.ModalOperationSupported = 1u;
@@ -410,6 +437,7 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
              * 当前项目本端就是 UFP_U/DP Sink，因此这里不应把入站 Attention 当作正常 DFP_U 请求处理。
              * Attention 本身也没有响应报文，遇到异常入站报文时直接忽略。
              */
+            PRINT("Structured VDM Attention received\r\n");
             break;
         }
     case USBPD_DP_CMD_STATUS_UPDATE:
@@ -479,6 +507,11 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
                 else
                 {
                     VL171_ApplyDPPinAssignment(config_vdo);
+                    if (!USBPD_HPD_IsEnabled())
+                    {
+                        USBPD_HPD_EnterMode();
+                    }
+                    USBPD_HPD_QueueHighIfAsserted();
                     const USBPD_HPDStatus hpd_status = USBPD_HPD_GetSnapshot();
                     PRINT("DP Configure HPD Logical=%u GPIO PB14=%u\r\n",
                           (unsigned)hpd_status.logical_high,
