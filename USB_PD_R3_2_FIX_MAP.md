@@ -108,7 +108,7 @@ Primary files:
 | [x] | PD-R3.2-009 | P1 | Ignore SOP VDMs until an Explicit Contract exists. |
 | [x] | PD-R3.2-010 | P1 | Send `Not_Supported` for unsupported Unstructured VDMs after Explicit Contract. |
 | [x] | PD-R3.2-011 | P1 | Implement Structured VDM version negotiation and common-version storage. |
-| [ ] | PD-R3.2-015 | P1 | Detect and track SOP Specification Revision. |
+| [x] | PD-R3.2-015 | P1 | Detect and track SOP Specification Revision. |
 | [ ] | PD-R3.2-023 | P1 | Bound Structured VDM response timing by required VDM timers. |
 | [x] | PD-R3.2-027 | P1 | NAK Discover SVIDs requests whose SVID is not the PD SID. |
 | [x] | PD-R3.2-030 | P1 | NAK Structured VDM requests with invalid `NumDO`. |

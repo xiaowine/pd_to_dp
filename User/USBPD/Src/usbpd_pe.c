@@ -566,6 +566,8 @@ __attribute__((interrupt("WCH-Interrupt-fast")))void USBPD_IRQHandler(void)
             }
             else
             {
+                USBPD_Control.Flag.PD_Version =
+                    (last_rx_header.Message_Header.SpecRev >= DEF_PD_REVISION_30) ? 1u : 0u;
                 USBPD_PE_SendGoodCRCForLastRx();
                 const uint8_t rx_msg_id = last_rx_header.Message_Header.MsgID & 0x07u;
                 if (USBPD_Control.Flag.Rx_MsgID_Valid &&
