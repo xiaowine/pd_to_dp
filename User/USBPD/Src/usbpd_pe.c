@@ -488,7 +488,14 @@ void USBPD_PE_Run(void)
                 }
             case DEF_TYPE_DATA_RESET:
                 {
-                    USBPD_PE_SendControlMessage(DEF_TYPE_NOT_SUPPORT);
+                    if (USBPD_PE_SendControlMessage(DEF_TYPE_ACCEPT) == DEF_PD_TX_OK)
+                    {
+                        USBPD_Control.Mode_Try_Cnt &= (uint8_t)~0x80u;
+                        USBPD_Control.Flag.DP_Modes_Discovered = 0u;
+                        USBPD_HPD_Reset();
+                        VL171_ApplyMode(VL171_MODE_USB);
+                        USBPD_PE_SendControlMessage(DEF_TYPE_DATA_RESET_CMP);
+                    }
                     break;
                 }
             default:

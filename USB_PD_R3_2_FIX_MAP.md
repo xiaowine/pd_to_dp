@@ -82,7 +82,7 @@ Primary files:
 | [x] | PD-R3.2-007 | P1 | Send `Not_Supported` for unsupported, unrecognized, and reserved messages. |
 | [x] | PD-R3.2-008 | P1 | Respond to `Get_Sink_Cap` with `Sink_Capabilities`. |
 | [x] | PD-R3.2-016 | P1 | Classify and handle Extended/Chunked messages, including `ChunkingNotSupportedTimer`. |
-| [ ] | PD-R3.2-019 | P1 | Implement required Data Reset state machine or compliant response path. |
+| [x] | PD-R3.2-019 | P1 | Implement required Data Reset state machine or compliant response path. |
 | [ ] | PD-R3.2-024 | P1 | Implement required BIST message behavior. |
 | [ ] | PD-R3.2-025 | P1 | Respond to `Get_Sink_Cap_Extended` with `Sink_Capabilities_Extended`. |
 | [x] | PD-R3.2-026 | P1 | Respond to `Get_Revision` with Revision Message. |
