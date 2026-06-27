@@ -16,10 +16,13 @@ Message_Header last_rx_header = {0};
 #define USBPD_T_SINK_WAIT_CAP_MS       500u
 #define USBPD_T_SENDER_RESPONSE_MS      30u
 #define USBPD_T_PS_TRANSITION_MS       500u
+#define USBPD_T_SINK_REQUEST_MS        100u
 #define USBPD_N_HARD_RESET_COUNT         2u
 #define USBPD_EXT_TYPE_STATUS            0x02u
 
 static uint8_t s_pe_last_ms;
+static uint8_t s_sink_request_timer_active;
+static uint16_t s_sink_request_timer_ms;
 
 static void USBPD_PE_ResetProtocolLayer(void)
 {
@@ -47,6 +50,12 @@ static void USBPD_PE_ResetTimer(void)
 {
     USBPD_Control.PE_Timer = 0u;
     s_pe_last_ms = USBPD_Tim_Ms_Cnt;
+}
+
+static void USBPD_PE_StartSinkRequestTimer(void)
+{
+    s_sink_request_timer_active = 1u;
+    s_sink_request_timer_ms = 0u;
 }
 
 static Message_Header USBPD_PE_BuildHeader(uint8_t msg_type, uint8_t num_do)
@@ -176,6 +185,8 @@ void USBPD_PE_Init(void)
     USBPD_Control.Flag.PD_Version = 1; /* 默认使用 PD3.0 版本进行通信 */
     USBPD_Control.SVDM_MajorVersion = 1u;
     USBPD_Control.SVDM_MinorVersion = 0u;
+    s_sink_request_timer_active = 0u;
+    s_sink_request_timer_ms = 0u;
     USBPD_PE_ResetProtocolLayer();
     USBPD_PE_ResetTimer();
 }
@@ -307,6 +318,15 @@ void USBPD_PE_Run(void)
 {
     const uint8_t elapsed_ms = USBPD_PE_TakeElapsedMs();
 
+    if (s_sink_request_timer_active)
+    {
+        s_sink_request_timer_ms = (uint16_t)(s_sink_request_timer_ms + elapsed_ms);
+        if (s_sink_request_timer_ms >= USBPD_T_SINK_REQUEST_MS)
+        {
+            s_sink_request_timer_active = 0u;
+        }
+    }
+
     switch (USBPD_Control.PD_State)
     {
     case STA_DISCONNECT:
@@ -413,11 +433,25 @@ void USBPD_PE_Run(void)
                     break;
                 }
             case DEF_TYPE_REJECT:
-            case DEF_TYPE_WAIT:
                 {
-                    PRINT("REJECT/WAIT received\r\n");
+                    PRINT("REJECT received\r\n");
                     if (USBPD_Control.PD_State == STA_RX_ACCEPT_WAIT)
                     {
+                        USBPD_PE_ResetTimer();
+                        SWITCH_PD_STATE(USBPD_Control.Flag.Explicit_Contract ? STA_IDLE : STA_RX_SRC_CAP_WAIT);
+                    }
+                    else
+                    {
+                        USBPD_PE_StartProtocolRecovery();
+                    }
+                    break;
+                }
+            case DEF_TYPE_WAIT:
+                {
+                    PRINT("WAIT received\r\n");
+                    if (USBPD_Control.PD_State == STA_RX_ACCEPT_WAIT)
+                    {
+                        USBPD_PE_StartSinkRequestTimer();
                         USBPD_PE_ResetTimer();
                         SWITCH_PD_STATE(USBPD_Control.Flag.Explicit_Contract ? STA_IDLE : STA_RX_SRC_CAP_WAIT);
                     }
@@ -515,6 +549,10 @@ void USBPD_PE_Run(void)
                     if (USBPD_Control.PD_State == STA_RX_SRC_CAP_WAIT ||
                         (USBPD_Control.Flag.Explicit_Contract && USBPD_Control.PD_State == STA_IDLE))
                     {
+                        if (s_sink_request_timer_active)
+                        {
+                            break;
+                        }
                         USBPD_Control.HardResetCounter = 0u;
                         USBPD_PE_ResetTimer();
                         USBPD_PDO_Analyse(pe_rx_buf);

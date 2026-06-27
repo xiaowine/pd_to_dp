@@ -59,7 +59,7 @@ Primary files:
 | [x] | PD-R3.2-017 | P1 | Do not silently skip required Request when offered 5V PDO lacks USB communication capability. |
 | [x] | PD-R3.2-028 | P0 | Implement `SinkWaitCapTimer` and `HardResetCounter` for missing `Source_Capabilities`. |
 | [x] | PD-R3.2-029 | P0 | Bound Request transmission after `Source_Capabilities` by `tSenderResponse`. |
-| [~] | PD-R3.2-038 | P0 | Handle `Wait` response and implement `SinkRequestTimer`. |
+| [x] | PD-R3.2-038 | P0 | Handle `Wait` response and implement `SinkRequestTimer`. |
 | [x] | PD-R3.2-043 | P1 | Enter USB Type-C Error Recovery on SOP Port Data Role mismatch. |
 | [ ] | PD-R3.2-046 | P0 | Gate Sink discovery by VBUS-present detection. |
 | [x] | PD-R3.2-053 | P0 | Treat unexpected recognized control responses as Protocol Error. |
