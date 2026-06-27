@@ -81,11 +81,11 @@ Primary files:
 | --- | --- | --- | --- |
 | [x] | PD-R3.2-007 | P1 | Send `Not_Supported` for unsupported, unrecognized, and reserved messages. |
 | [x] | PD-R3.2-008 | P1 | Respond to `Get_Sink_Cap` with `Sink_Capabilities`. |
-| [ ] | PD-R3.2-016 | P1 | Classify and handle Extended/Chunked messages, including `ChunkingNotSupportedTimer`. |
+| [x] | PD-R3.2-016 | P1 | Classify and handle Extended/Chunked messages, including `ChunkingNotSupportedTimer`. |
 | [ ] | PD-R3.2-019 | P1 | Implement required Data Reset state machine or compliant response path. |
 | [ ] | PD-R3.2-024 | P1 | Implement required BIST message behavior. |
 | [ ] | PD-R3.2-025 | P1 | Respond to `Get_Sink_Cap_Extended` with `Sink_Capabilities_Extended`. |
-| [ ] | PD-R3.2-026 | P1 | Respond to `Get_Revision` with Revision Message. |
+| [x] | PD-R3.2-026 | P1 | Respond to `Get_Revision` with Revision Message. |
 | [x] | PD-R3.2-033 | P1 | Inform DPM when `Not_Supported` is received. |
 | [x] | PD-R3.2-040 | P1 | Inform DPM when `Alert` is received. |
 | [x] | PD-R3.2-045 | P1 | Respond correctly to unsupported or unevaluated role-swap requests. |
@@ -93,7 +93,7 @@ Primary files:
 | [x] | PD-R3.2-051 | P1 | Respond correctly to `VCONN_Swap` requests. |
 | [x] | PD-R3.2-060 | P1 | Decode messages with Header `Ext` bit as Extended Messages, not Control/Data messages. |
 | [x] | PD-R3.2-072 | P1 | Treat unexpected recognized non-VDM Data Messages as Protocol Error or required response. |
-| [ ] | PD-R3.2-073 | P1 | Respond to `Get_Status` with required Status Extended Message. |
+| [x] | PD-R3.2-073 | P1 | Respond to `Get_Status` with required Status Extended Message. |
 
 ## 4. Common VDM and Structured VDM Framework
 
@@ -149,15 +149,15 @@ Primary files:
 | [x] | PD-R3.2-057 | P1 | Reconnect pins to USB before ACKing DisplayPort Configure to USB. |
 | [x] | PD-R3.2-058 | P1 | Enforce required third-message pacing for DP Attention transmission. |
 | [x] | PD-R3.2-059 | P1 | Advertise mandatory DP-only pin assignment in multi-function mode. |
-| [ ] | PD-R3.2-061 | P2 | Preserve queued second `IRQ_HPD` event in HPD-to-USB PD conversion. |
+| [x] | PD-R3.2-061 | P2 | Preserve queued second `IRQ_HPD` event in HPD-to-USB PD conversion. |
 | [x] | PD-R3.2-062 | P1 | Advertise mandatory Pin Assignment E for USB-C receptacle DP Sink. |
-| [ ] | PD-R3.2-063 | P2 | Preserve HPD queue ordering after `HPD_Low` and clear stale `IRQ_HPD`. |
+| [x] | PD-R3.2-063 | P2 | Preserve HPD queue ordering after `HPD_Low` and clear stale `IRQ_HPD`. |
 | [x] | PD-R3.2-064 | P1 | Report DP Status Enabled only when DisplayPort functionality is enabled. |
 | [x] | PD-R3.2-065 | P1 | Do not send HPD Attention before initial DisplayPort Status exchange. |
 | [ ] | PD-R3.2-066 | P2 | Add USB Billboard path when DisplayPort Alt Mode entry fails. |
 | [x] | PD-R3.2-067 | P1 | Re-enable HPD after returning from USB Configuration to DP Configuration. |
-| [ ] | PD-R3.2-068 | P1 | Debounce HPD High before USB PD reporting. |
-| [ ] | PD-R3.2-071 | P1 | Debounce/filter raw HPD high before initial DP Status report. |
+| [x] | PD-R3.2-068 | P1 | Debounce HPD High before USB PD reporting. |
+| [x] | PD-R3.2-071 | P1 | Debounce/filter raw HPD high before initial DP Status report. |
 | [x] | PD-R3.2-074 | P1 | Enforce required DP Status/Configure VDO payload fields. |
 | [x] | PD-R3.2-075 | P1 | Advertise current Structured VDM minor version for standard SVDM commands. |
 | [x] | PD-R3.2-080 | P1 | Avoid entering DP Alt Mode before Enter Mode ACK transmission succeeds. |
@@ -165,8 +165,8 @@ Primary files:
 | [x] | PD-R3.2-082 | P1 | Accept mandatory associated DP-only Configure pin assignment in multi-function mode. |
 | [x] | PD-R3.2-083 | P1 | Send required HPD High Attention after DP Sink configuration completes. |
 | [x] | PD-R3.2-089 | P1 | Accept mandatory Pin Assignment E Configure for USB-C receptacle DP Sink. |
-| [ ] | PD-R3.2-090 | P1 | Handle Exit Mode ACK loss without leaving UFP/DFP mode states inconsistent. |
-| [ ] | PD-R3.2-091 | P1 | Handle DisplayPort Configure ACK loss without leaving pin configurations inconsistent. |
+| [x] | PD-R3.2-090 | P1 | Handle Exit Mode ACK loss without leaving UFP/DFP mode states inconsistent. |
+| [x] | PD-R3.2-091 | P1 | Handle DisplayPort Configure ACK loss without leaving pin configurations inconsistent. |
 
 ## Cross-Cutting Implementation Notes
 

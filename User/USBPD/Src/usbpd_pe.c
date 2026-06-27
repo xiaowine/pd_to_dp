@@ -17,6 +17,7 @@ Message_Header last_rx_header = {0};
 #define USBPD_T_SENDER_RESPONSE_MS      30u
 #define USBPD_T_PS_TRANSITION_MS       500u
 #define USBPD_N_HARD_RESET_COUNT         2u
+#define USBPD_EXT_TYPE_STATUS            0x02u
 
 static uint8_t s_pe_last_ms;
 
@@ -65,6 +66,11 @@ static Message_Header USBPD_PE_BuildHeader(uint8_t msg_type, uint8_t num_do)
     return header;
 }
 
+static uint16_t USBPD_PE_BuildExtendedHeader(uint16_t data_size)
+{
+    return (uint16_t)(data_size & 0x01FFu);
+}
+
 static uint8_t USBPD_PE_SendControlMessage(uint8_t msg_type)
 {
     const Message_Header header = USBPD_PE_BuildHeader(msg_type, 0u);
@@ -93,6 +99,41 @@ static uint8_t USBPD_PE_SendSinkCapabilities(void)
     memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
     memcpy(&pe_tx_buf[2], &sink_pdo.Raw, sizeof(sink_pdo.Raw));
     if (USBPD_Phy_TxMessageWaitGoodCRC(pe_tx_buf, 6u, UPD_SOP0) == DEF_PD_TX_OK)
+    {
+        USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+        return DEF_PD_TX_OK;
+    }
+
+    return DEF_PD_TX_FAIL;
+}
+
+static uint8_t USBPD_PE_SendRevision(void)
+{
+    const Message_Header header = USBPD_PE_BuildHeader(DEF_TYPE_REVISION, 1u);
+    const uint32_t revision_vdo = 0x03020000u;
+
+    memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
+    memcpy(&pe_tx_buf[2], &revision_vdo, sizeof(revision_vdo));
+    if (USBPD_Phy_TxMessageWaitGoodCRC(pe_tx_buf, 6u, UPD_SOP0) == DEF_PD_TX_OK)
+    {
+        USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+        return DEF_PD_TX_OK;
+    }
+
+    return DEF_PD_TX_FAIL;
+}
+
+static uint8_t USBPD_PE_SendStatus(void)
+{
+    Message_Header header = USBPD_PE_BuildHeader(USBPD_EXT_TYPE_STATUS, 2u);
+    const uint16_t ext_header = USBPD_PE_BuildExtendedHeader(6u);
+    uint8_t status_data[6] = {0};
+
+    header.Message_Header.Ext = 1u;
+    memcpy(&pe_tx_buf[0], &header.raw, sizeof(header.raw));
+    memcpy(&pe_tx_buf[2], &ext_header, sizeof(ext_header));
+    memcpy(&pe_tx_buf[4], status_data, sizeof(status_data));
+    if (USBPD_Phy_TxMessageWaitGoodCRC(pe_tx_buf, 10u, UPD_SOP0) == DEF_PD_TX_OK)
     {
         USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
         return DEF_PD_TX_OK;
@@ -390,6 +431,21 @@ void USBPD_PE_Run(void)
             case DEF_TYPE_GET_SNK_CAP:
                 {
                     USBPD_PE_SendSinkCapabilities();
+                    break;
+                }
+            case DEF_TYPE_GET_STATUS:
+                {
+                    USBPD_PE_SendStatus();
+                    break;
+                }
+            case DEF_TYPE_GET_REVISION:
+                {
+                    USBPD_PE_SendRevision();
+                    break;
+                }
+            case DEF_TYPE_GET_SNK_CAP_EX:
+                {
+                    USBPD_PE_SendControlMessage(DEF_TYPE_NOT_SUPPORT);
                     break;
                 }
             case DEF_TYPE_DR_SWAP:

@@ -16,6 +16,8 @@
 static uint8_t USBPD_SVDMCommandUsesObjectPosition(uint8_t command);
 static uint8_t s_attention_last_ms;
 static uint8_t s_attention_burst_count;
+static uint32_t s_active_dp_config_raw;
+static uint8_t s_active_dp_config_valid;
 
 /* 根据当前控制状态拼出本端要回传的 DP Status VDO。 */
 static uint32_t USBPD_BuildDPStatusVDO(const USBPD_HPDStatus* hpd_status)
@@ -192,6 +194,30 @@ static uint8_t USBPD_SendDPAttention(uint8_t* tx_buf, const USBPD_HPDStatus* hpd
 static uint8_t USBPD_DPModeIsActive(void)
 {
     return (USBPD_Control.Mode_Try_Cnt & 0x80u) ? 1u : 0u;
+}
+
+static void USBPD_RestoreDPConfiguration(uint32_t config_raw, uint8_t hpd_enabled)
+{
+    USBPD_DPConfigureVDO config = {0};
+
+    config.Raw = config_raw;
+    if (config.Bit.SelectConfiguration == USBPD_DP_SELECT_USB)
+    {
+        USBPD_HPD_Disable();
+        VL171_ApplyMode(VL171_MODE_USB);
+        return;
+    }
+
+    VL171_ApplyDPPinAssignment(config_raw);
+    if (hpd_enabled)
+    {
+        USBPD_HPD_EnterMode();
+        USBPD_HPD_QueueHighIfAsserted();
+    }
+    else
+    {
+        USBPD_HPD_Disable();
+    }
 }
 
 static uint8_t USBPD_SVDMVersionIsSupported(const USBPD_VDMHeaderStructured* vdm_header)
@@ -433,6 +459,8 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
             {
                 /* 进入 DP 模式后打开 HPD 检测。 */
                 USBPD_Control.Mode_Try_Cnt |= 0x80u;
+                s_active_dp_config_raw = USBPD_DP_ALT_MODE.supported_configurations[0].Raw;
+                s_active_dp_config_valid = 1u;
                 USBPD_HPD_EnterMode();
             }
             break;
@@ -451,7 +479,20 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
             USBPD_Control.Mode_Try_Cnt &= (uint8_t)~0x80u;
             USBPD_HPD_Disable();
             VL171_ApplyMode(VL171_MODE_USB);
-            USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);
+            if (USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL) == DEF_PD_TX_OK)
+            {
+                s_active_dp_config_raw = USBPD_DP_ALT_MODE.supported_configurations[0].Raw;
+                s_active_dp_config_valid = 0u;
+            }
+            else
+            {
+                USBPD_Control.Mode_Try_Cnt |= 0x80u;
+                USBPD_HPD_EnterMode();
+                if (s_active_dp_config_valid)
+                {
+                    USBPD_RestoreDPConfiguration(s_active_dp_config_raw, 1u);
+                }
+            }
             break;
         }
     case USBPD_SVDM_CMD_ATTENTION:
@@ -521,6 +562,10 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
 
             {
                 USBPD_DPConfigureVDO config = {0};
+                const uint32_t prev_config_raw = s_active_dp_config_valid
+                                                     ? s_active_dp_config_raw
+                                                     : USBPD_DP_ALT_MODE.supported_configurations[0].Raw;
+                const uint8_t prev_hpd_enabled = USBPD_HPD_IsEnabled();
                 config.Raw = config_vdo;
 
                 if (config.Bit.SelectConfiguration == USBPD_DP_SELECT_USB)
@@ -541,8 +586,16 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
                           (unsigned)hpd_status.logical_high,
                           (unsigned)hpd_status.gpio_high);
                 }
+                if (USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL) == DEF_PD_TX_OK)
+                {
+                    s_active_dp_config_raw = config_vdo;
+                    s_active_dp_config_valid = 1u;
+                }
+                else
+                {
+                    USBPD_RestoreDPConfiguration(prev_config_raw, prev_hpd_enabled);
+                }
             }
-            USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);
             break;
         }
     default:

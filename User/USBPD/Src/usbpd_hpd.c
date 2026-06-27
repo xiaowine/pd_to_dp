@@ -8,14 +8,16 @@
 
 static uint8_t s_enabled;
 static uint8_t s_logical_high;
+static uint8_t s_high_pending;
+static uint16_t s_high_start_us;
 static uint8_t s_low_pending;
 static uint16_t s_low_start_us;
 static uint8_t s_reported_valid;
 static uint8_t s_reported_high;
 static volatile uint8_t s_pending_high;
 static volatile uint8_t s_pending_low;
-static volatile uint8_t s_pending_irq;
-static volatile uint16_t s_pending_irq_low_us;
+static volatile uint8_t s_pending_irq_count;
+static volatile uint16_t s_pending_irq_low_us[2];
 static volatile uint16_t s_pending_low_us;
 static uint8_t s_tx_pending_valid;
 static USBPD_HPDEvent s_tx_pending_event;
@@ -45,11 +47,53 @@ static void USBPD_HPD_ClearPendingEvents(void)
 {
     s_pending_high = 0u;
     s_pending_low = 0u;
-    s_pending_irq = 0u;
-    s_pending_irq_low_us = 0u;
+    s_pending_irq_count = 0u;
+    s_pending_irq_low_us[0] = 0u;
+    s_pending_irq_low_us[1] = 0u;
     s_pending_low_us = 0u;
     s_tx_pending_valid = 0u;
     s_tx_pending_event.type = USBPD_HPD_EVENT_NONE;
+}
+
+static void USBPD_HPD_ClearQueuedHighIrq(void)
+{
+    s_pending_high = 0u;
+    s_pending_irq_count = 0u;
+    s_pending_irq_low_us[0] = 0u;
+    s_pending_irq_low_us[1] = 0u;
+    s_high_pending = 0u;
+}
+
+static void USBPD_HPD_QueueIrq(uint16_t low_us)
+{
+    if (s_pending_irq_count >= 2u)
+    {
+        return;
+    }
+
+    s_pending_irq_low_us[s_pending_irq_count] = low_us;
+    s_pending_irq_count++;
+}
+
+static void USBPD_HPD_CheckHighDebounce(void)
+{
+    if (!s_enabled || !s_high_pending)
+    {
+        return;
+    }
+
+    if (!DP_HPD_IsHigh())
+    {
+        s_high_pending = 0u;
+        return;
+    }
+
+    if ((uint16_t)(USBPD_Tim_GetUs16() - s_high_start_us) >= USBPD_HPD_IRQ_MIN_US)
+    {
+        s_high_pending = 0u;
+        s_logical_high = 1u;
+        s_pending_high = 1u;
+    }
 }
 
 static USBPD_HPDStatus USBPD_HPD_CheckLongLow(USBPD_HPDEventType* event_type)
@@ -65,6 +109,8 @@ static USBPD_HPDStatus USBPD_HPD_CheckLongLow(USBPD_HPDEventType* event_type)
         return USBPD_HPD_MakeStatus(gpio_high, 0u, 0u);
     }
 
+    USBPD_HPD_CheckHighDebounce();
+
     if (gpio_high)
     {
         return USBPD_HPD_MakeStatus(gpio_high, 0u, 0u);
@@ -77,6 +123,7 @@ static USBPD_HPDStatus USBPD_HPD_CheckLongLow(USBPD_HPDEventType* event_type)
         {
             s_low_pending = 0u;
             s_logical_high = 0u;
+            USBPD_HPD_ClearQueuedHighIrq();
             *event_type = USBPD_HPD_EVENT_LOW;
         }
     }
@@ -103,13 +150,15 @@ static uint8_t USBPD_HPD_PopPendingEvent(USBPD_HPDEvent* event)
         event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 0u, 0u);
         s_pending_high = 0u;
     }
-    else if (s_pending_irq)
+    else if (s_pending_irq_count)
     {
-        const uint16_t low_us = s_pending_irq_low_us;
+        const uint16_t low_us = s_pending_irq_low_us[0];
 
         event->type = USBPD_HPD_EVENT_IRQ;
         event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 1u, low_us);
-        s_pending_irq = 0u;
+        s_pending_irq_low_us[0] = s_pending_irq_low_us[1];
+        s_pending_irq_low_us[1] = 0u;
+        s_pending_irq_count--;
     }
     else
     {
@@ -134,10 +183,10 @@ static uint8_t USBPD_HPD_PeekPendingEvent(USBPD_HPDEvent* event)
         event->type = USBPD_HPD_EVENT_HIGH;
         event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 0u, 0u);
     }
-    else if (s_pending_irq)
+    else if (s_pending_irq_count)
     {
         event->type = USBPD_HPD_EVENT_IRQ;
-        event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 1u, s_pending_irq_low_us);
+        event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 1u, s_pending_irq_low_us[0]);
     }
     else
     {
@@ -152,6 +201,8 @@ void USBPD_HPD_Reset(void)
     DP_HPD_DisableInterrupt();
     s_enabled = 0u;
     s_logical_high = 0u;
+    s_high_pending = 0u;
+    s_high_start_us = 0u;
     s_low_pending = 0u;
     s_low_start_us = 0u;
     s_reported_valid = 0u;
@@ -163,7 +214,9 @@ void USBPD_HPD_EnterMode(void)
 {
     DP_HPD_DisableInterrupt();
     s_enabled = 1u;
-    s_logical_high = DP_HPD_IsHigh();
+    s_logical_high = 0u;
+    s_high_pending = DP_HPD_IsHigh() ? 1u : 0u;
+    s_high_start_us = USBPD_Tim_GetUs16();
     s_low_pending = 0u;
     s_low_start_us = 0u;
     s_reported_valid = 0u;
@@ -189,8 +242,8 @@ void USBPD_HPD_QueueHighIfAsserted(void)
         return;
     }
 
-    s_logical_high = 1u;
-    s_pending_high = 1u;
+    s_high_pending = 1u;
+    s_high_start_us = USBPD_Tim_GetUs16();
 }
 
 USBPD_HPDStatus USBPD_HPD_ReadStatus(void)
@@ -281,8 +334,12 @@ void USBPD_HPD_CommitEvent(const USBPD_HPDEvent* event)
         break;
 
     case USBPD_HPD_EVENT_IRQ:
-        s_pending_irq = 0u;
-        s_pending_irq_low_us = 0u;
+        if (s_pending_irq_count)
+        {
+            s_pending_irq_low_us[0] = s_pending_irq_low_us[1];
+            s_pending_irq_low_us[1] = 0u;
+            s_pending_irq_count--;
+        }
         break;
 
     default:
@@ -324,6 +381,7 @@ void DP_HPD_EdgeCallback(void)
             s_low_pending = 1u;
             s_low_start_us = now_us;
         }
+        s_high_pending = 0u;
         return;
     }
 
@@ -334,9 +392,8 @@ void DP_HPD_EdgeCallback(void)
 
         if (low_us >= USBPD_HPD_IRQ_MIN_US && low_us < USBPD_HPD_UNPLUG_MIN_US)
         {
-            s_pending_irq_low_us = low_us;
             s_logical_high = 1u;
-            s_pending_irq = 1u;
+            USBPD_HPD_QueueIrq(low_us);
             return;
         }
 
@@ -344,13 +401,14 @@ void DP_HPD_EdgeCallback(void)
         {
             s_logical_high = 0u;
             s_pending_low_us = low_us;
+            USBPD_HPD_ClearQueuedHighIrq();
             s_pending_low = 1u;
         }
     }
 
     if (!s_logical_high)
     {
-        s_logical_high = 1u;
-        s_pending_high = 1u;
+        s_high_pending = 1u;
+        s_high_start_us = now_us;
     }
 }
