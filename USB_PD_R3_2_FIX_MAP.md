@@ -39,7 +39,7 @@ Primary files:
 | [ ] | PD-R3.2-031 | P0 | Implement `PRL_Tx_Discard_Message` behavior when incoming SOP traffic interrupts transmit preparation. |
 | [x] | PD-R3.2-032 | P0 | Reset MessageID counters and stored receive IDs on Protocol Layer reset. |
 | [ ] | PD-R3.2-034 | P0 | Check CC bus Idle immediately before packet transmission. |
-| [ ] | PD-R3.2-039 | P0 | Recover transmission failure by sending required Soft Reset. |
+| [x] | PD-R3.2-039 | P0 | Recover transmission failure by sending required Soft Reset. |
 | [x] | PD-R3.2-079 | P0 | Fix receive/main-loop race where a message can be processed without sending GoodCRC. |
 
 ## 2. Sink Policy Engine: Attach, Power Negotiation, Reset

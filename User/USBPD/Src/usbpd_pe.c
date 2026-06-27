@@ -241,6 +241,9 @@ void STA_Req(void)
             SWITCH_PD_STATE(STA_RX_ACCEPT_WAIT);
             return;
         }
+
+        USBPD_PE_StartProtocolRecovery();
+        return;
     }
     SWITCH_PD_STATE(STA_IDLE);
 }

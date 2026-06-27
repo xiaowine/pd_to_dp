@@ -105,6 +105,7 @@ static uint8_t USBPD_SendDataMessage(uint8_t* tx_buf, uint8_t msg_type, uint8_t 
         return DEF_PD_TX_OK;
     }
 
+    USBPD_PE_ProtocolErrorRecovery();
     return DEF_PD_TX_FAIL;
 }
 
