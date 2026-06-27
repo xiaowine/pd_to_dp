@@ -187,8 +187,8 @@ void USBPD_Phy_Detect_Check(void)
             {
                 SWITCH_PD_STATE(STA_SRC_CONNECT);
             }
-            USBPD_Phy_TxPacket(NULL, 0, UPD_HARD_RESET, 1); /* 发送 Hard Reset 并等待发送完成 */
-            // USBPD_Phy_TxPacket(NULL, 0, UPD_SOP0, 0);
+            // USBPD_Phy_TxPacket(NULL, 0, UPD_HARD_RESET, 1); /* 发送 Hard Reset 并等待发送完成 */
+            USBPD_Phy_TxPacket(NULL, 0, UPD_SOP0, 0);
             USBPD_Phy_EnterRxMode();
         }
     }
