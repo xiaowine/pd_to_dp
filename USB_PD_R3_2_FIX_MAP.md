@@ -60,7 +60,7 @@ Primary files:
 | [x] | PD-R3.2-028 | P0 | Implement `SinkWaitCapTimer` and `HardResetCounter` for missing `Source_Capabilities`. |
 | [x] | PD-R3.2-029 | P0 | Bound Request transmission after `Source_Capabilities` by `tSenderResponse`. |
 | [~] | PD-R3.2-038 | P0 | Handle `Wait` response and implement `SinkRequestTimer`. |
-| [ ] | PD-R3.2-043 | P1 | Enter USB Type-C Error Recovery on SOP Port Data Role mismatch. |
+| [x] | PD-R3.2-043 | P1 | Enter USB Type-C Error Recovery on SOP Port Data Role mismatch. |
 | [ ] | PD-R3.2-046 | P0 | Gate Sink discovery by VBUS-present detection. |
 | [x] | PD-R3.2-053 | P0 | Treat unexpected recognized control responses as Protocol Error. |
 | [x] | PD-R3.2-069 | P0 | Avoid repeating an unchanged Sink Request after Source `Reject`. |
@@ -109,7 +109,7 @@ Primary files:
 | [x] | PD-R3.2-010 | P1 | Send `Not_Supported` for unsupported Unstructured VDMs after Explicit Contract. |
 | [x] | PD-R3.2-011 | P1 | Implement Structured VDM version negotiation and common-version storage. |
 | [x] | PD-R3.2-015 | P1 | Detect and track SOP Specification Revision. |
-| [ ] | PD-R3.2-023 | P1 | Bound Structured VDM response timing by required VDM timers. |
+| [x] | PD-R3.2-023 | P1 | Bound Structured VDM response timing by required VDM timers. |
 | [x] | PD-R3.2-027 | P1 | NAK Discover SVIDs requests whose SVID is not the PD SID. |
 | [x] | PD-R3.2-030 | P1 | NAK Structured VDM requests with invalid `NumDO`. |
 | [x] | PD-R3.2-035 | P1 | Prevent Discover VDM responses from transmitting invalid Object Position. |
@@ -137,7 +137,7 @@ Primary files:
 | Status | ID | Priority | Fix target |
 | --- | --- | --- | --- |
 | [ ] | PD-R3.2-012 | P1 | Replace Discover Identity placeholder VID/PID with valid device identity values. |
-| [ ] | PD-R3.2-014 | P1 | Make Sink-initiated Attention obey SinkTxOK collision avoidance. |
+| [x] | PD-R3.2-014 | P1 | Make Sink-initiated Attention obey SinkTxOK collision avoidance. |
 | [x] | PD-R3.2-020 | P1 | Trigger required Hard Reset for `DR_Swap` during Modal Operation. |
 | [x] | PD-R3.2-021 | P1 | Exit Active Modes and return port to USB operation on Detach. |
 | [x] | PD-R3.2-022 | P1 | NAK Exit Mode for invalid or inactive modes. |

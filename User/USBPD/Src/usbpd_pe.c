@@ -162,6 +162,14 @@ void USBPD_PE_ProtocolErrorRecovery(void)
     USBPD_PE_StartProtocolRecovery();
 }
 
+static void USBPD_PE_EnterTypeCErrorRecovery(void)
+{
+    PRINT("PD data role mismatch, enter Error Recovery\r\n");
+    USBPD_Control.Flag.Connected = 0u;
+    USBPD_PE_Reset();
+    SWITCH_PD_STATE(STA_DISCONNECT);
+}
+
 void USBPD_PE_Init(void)
 {
     USBPD_Phy_SetRxBuffer(pe_rx_buf);
@@ -362,6 +370,13 @@ void USBPD_PE_Run(void)
     if (USBPD_Control.Flag.Msg_Recvd)
     {
         const uint8_t msg_type = USBPD_MSG_TYPE_FROM_HEADER(pe_rx_buf);
+
+        if (last_rx_header.Message_Header.PDRole != 1u)
+        {
+            USBPD_PE_EnterTypeCErrorRecovery();
+            USBPD_Control.Flag.Msg_Recvd = 0;
+            return;
+        }
 
         if (last_rx_header.Message_Header.Ext)
         {
