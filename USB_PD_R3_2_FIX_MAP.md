@@ -35,12 +35,12 @@ Primary files:
 | --- | --- | --- | --- |
 | [x] | PD-R3.2-003 | P0 | Wait for matching GoodCRC, retry with same MessageID, increment MessageID only after success. |
 | [x] | PD-R3.2-004 | P0 | Store last received MessageID per SOP and discard duplicate retries after GoodCRC. |
-| [ ] | PD-R3.2-018 | P0 | Bound GoodCRC response timing to `tTransmit`. |
+| [x] | PD-R3.2-018 | P0 | Bound GoodCRC response timing to `tTransmit`. |
 | [ ] | PD-R3.2-031 | P0 | Implement `PRL_Tx_Discard_Message` behavior when incoming SOP traffic interrupts transmit preparation. |
 | [x] | PD-R3.2-032 | P0 | Reset MessageID counters and stored receive IDs on Protocol Layer reset. |
 | [ ] | PD-R3.2-034 | P0 | Check CC bus Idle immediately before packet transmission. |
 | [ ] | PD-R3.2-039 | P0 | Recover transmission failure by sending required Soft Reset. |
-| [~] | PD-R3.2-079 | P0 | Fix receive/main-loop race where a message can be processed without sending GoodCRC. |
+| [x] | PD-R3.2-079 | P0 | Fix receive/main-loop race where a message can be processed without sending GoodCRC. |
 
 ## 2. Sink Policy Engine: Attach, Power Negotiation, Reset
 
@@ -57,14 +57,14 @@ Primary files:
 | [x] | PD-R3.2-006 | P0 | Treat `Source_Capabilities` outside allowed Sink states as Protocol Error. |
 | [x] | PD-R3.2-013 | P0 | Handle received Hard Reset with Sink transition-to-default recovery. |
 | [x] | PD-R3.2-017 | P1 | Do not silently skip required Request when offered 5V PDO lacks USB communication capability. |
-| [ ] | PD-R3.2-028 | P0 | Implement `SinkWaitCapTimer` and `HardResetCounter` for missing `Source_Capabilities`. |
+| [x] | PD-R3.2-028 | P0 | Implement `SinkWaitCapTimer` and `HardResetCounter` for missing `Source_Capabilities`. |
 | [ ] | PD-R3.2-029 | P0 | Bound Request transmission after `Source_Capabilities` by `tSenderResponse`. |
 | [~] | PD-R3.2-038 | P0 | Handle `Wait` response and implement `SinkRequestTimer`. |
 | [ ] | PD-R3.2-043 | P1 | Enter USB Type-C Error Recovery on SOP Port Data Role mismatch. |
 | [ ] | PD-R3.2-046 | P0 | Gate Sink discovery by VBUS-present detection. |
 | [x] | PD-R3.2-053 | P0 | Treat unexpected recognized control responses as Protocol Error. |
 | [x] | PD-R3.2-069 | P0 | Avoid repeating an unchanged Sink Request after Source `Reject`. |
-| [ ] | PD-R3.2-070 | P0 | Run Sink transition-to-default recovery after transmitting Hard Reset. |
+| [x] | PD-R3.2-070 | P0 | Run Sink transition-to-default recovery after transmitting Hard Reset. |
 | [x] | PD-R3.2-078 | P1 | Validate Source PDO current before mirroring it into Request. |
 | [x] | PD-R3.2-085 | P0 | Clear pending receive/Request state on Detach. |
 | [x] | PD-R3.2-086 | P0 | Prevent HPD Attention from interrupting unfinished Power Negotiation AMS. |

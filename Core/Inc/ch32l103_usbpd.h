@@ -295,9 +295,11 @@ typedef struct
     volatile uint8_t Det_Cnt; /* PD 连接状态检测次数 */
     volatile uint8_t Det_Sel_Cnt; /* PD 连接检测中 SEL 切换次数 */
     volatile uint16_t PD_Comm_Timer; /* PD 通信共享计时变量 */
+    volatile uint16_t PE_Timer; /* 当前 PE 等待状态计时，单位 ms */
     volatile uint8_t ReqPDO_Idx; /* 请求的 PDO 索引，有效值 1-7 */
     volatile uint8_t Tx_GoodCRC_MsgID; /* 最近收到的 GoodCRC MessageID */
     volatile uint8_t Rx_Last_MsgID; /* SOP 接收端上一次 MessageID */
+    volatile uint8_t HardResetCounter; /* Sink 缺失 Source_Capabilities 时的 Hard Reset 计数 */
     volatile uint16_t PD_BusIdle_Timer; /* 总线空闲时间计时器 */
     volatile uint8_t Mode_Try_Cnt; /* 当前模式重试次数，最高位用于模式标记 */
     volatile uint8_t Err_Op_Cnt; /* 异常操作计数 */

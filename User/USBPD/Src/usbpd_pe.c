@@ -13,6 +13,13 @@ __attribute__ ((aligned(4))) uint8_t pe_rx_buf[PD_BUF_SIZE];
 __attribute__ ((aligned(4))) uint8_t pe_tx_buf[PD_BUF_SIZE];
 Message_Header last_rx_header = {0};
 
+#define USBPD_T_SINK_WAIT_CAP_MS       500u
+#define USBPD_T_SENDER_RESPONSE_MS      30u
+#define USBPD_T_PS_TRANSITION_MS       500u
+#define USBPD_N_HARD_RESET_COUNT         2u
+
+static uint8_t s_pe_last_ms;
+
 static void USBPD_PE_ResetProtocolLayer(void)
 {
     USBPD_Control.Msg_ID = 0u;
@@ -24,6 +31,21 @@ static void USBPD_PE_ResetProtocolLayer(void)
     memset(pe_rx_buf, 0, sizeof(pe_rx_buf));
     memset(pe_tx_buf, 0, sizeof(pe_tx_buf));
     last_rx_header.raw = 0u;
+}
+
+static uint8_t USBPD_PE_TakeElapsedMs(void)
+{
+    const uint8_t now = USBPD_Tim_Ms_Cnt;
+    const uint8_t elapsed = (uint8_t)(now - s_pe_last_ms);
+
+    s_pe_last_ms = now;
+    return elapsed;
+}
+
+static void USBPD_PE_ResetTimer(void)
+{
+    USBPD_Control.PE_Timer = 0u;
+    s_pe_last_ms = USBPD_Tim_Ms_Cnt;
 }
 
 static Message_Header USBPD_PE_BuildHeader(uint8_t msg_type, uint8_t num_do)
@@ -99,6 +121,7 @@ void USBPD_PE_Init(void)
     USBPD_Phy_SetRxBuffer(pe_rx_buf);
     USBPD_Control.Flag.PD_Version = 1; /* 默认使用 PD3.0 版本进行通信 */
     USBPD_PE_ResetProtocolLayer();
+    USBPD_PE_ResetTimer();
 }
 
 void USBPD_PE_Reset(void)
@@ -112,9 +135,23 @@ void USBPD_PE_Reset(void)
     USBPD_Control.Flag.Explicit_Contract = 0;
     USBPD_Control.Flag.DP_Modes_Discovered = 0;
     USBPD_Control.Mode_Try_Cnt &= (uint8_t)~0x80u;
+    USBPD_Control.HardResetCounter = 0u;
     USBPD_PE_ResetProtocolLayer();
+    USBPD_PE_ResetTimer();
     USBPD_HPD_Reset();
     VL171_ApplyMode(VL171_MODE_USB);
+}
+
+static void USBPD_PE_SendHardResetAndWaitCaps(void)
+{
+    USBPD_Phy_TxPacket(NULL, 0u, UPD_HARD_RESET, 1u);
+    USBPD_PE_ResetProtocolLayer();
+    USBPD_Control.Flag.Explicit_Contract = 0u;
+    USBPD_PE_ResetTimer();
+    if (USBPD_Control.Flag.Connected)
+    {
+        SWITCH_PD_STATE(STA_RX_SRC_CAP_WAIT);
+    }
 }
 
 void STA_Connect(void)
@@ -136,9 +173,8 @@ void STA_Connect(void)
     }
 }
 
-void STA_Tx_GoodCRC(void)
+static void USBPD_PE_SendGoodCRCForLastRx(void)
 {
-    const CC_STATUS resume_state = USBPD_Control.PD_State_Last;
     const Message_Header header = {
         .Message_Header = {
             .MsgType = DEF_TYPE_GOODCRC,
@@ -152,6 +188,13 @@ void STA_Tx_GoodCRC(void)
     };
     memcpy(pe_tx_buf, &header.raw, 2);
     USBPD_Phy_TxPacket(pe_tx_buf, 2, UPD_SOP0, 1);
+}
+
+void STA_Tx_GoodCRC(void)
+{
+    const CC_STATUS resume_state = USBPD_Control.PD_State_Last;
+
+    USBPD_PE_SendGoodCRCForLastRx();
     USBPD_Control.PD_State = resume_state;
 }
 
@@ -185,6 +228,7 @@ void STA_Req(void)
         if (USBPD_Phy_TxMessageWaitGoodCRC(pe_tx_buf, 6u, UPD_SOP0) == DEF_PD_TX_OK)
         {
             USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+            USBPD_PE_ResetTimer();
             SWITCH_PD_STATE(STA_RX_ACCEPT_WAIT);
             return;
         }
@@ -200,6 +244,8 @@ void STA_Vdm(void)
 
 void USBPD_PE_Run(void)
 {
+    const uint8_t elapsed_ms = USBPD_PE_TakeElapsedMs();
+
     switch (USBPD_Control.PD_State)
     {
     case STA_DISCONNECT:
@@ -213,11 +259,34 @@ void USBPD_PE_Run(void)
         }
     case STA_RX_SRC_CAP_WAIT:
         {
+            USBPD_Control.PE_Timer = (uint16_t)(USBPD_Control.PE_Timer + elapsed_ms);
+            if (USBPD_Control.PE_Timer >= USBPD_T_SINK_WAIT_CAP_MS)
+            {
+                USBPD_PE_ResetTimer();
+                if (USBPD_Control.HardResetCounter < USBPD_N_HARD_RESET_COUNT)
+                {
+                    USBPD_Control.HardResetCounter++;
+                    USBPD_PE_SendHardResetAndWaitCaps();
+                }
+            }
             break;
         }
     case STA_RX_ACCEPT_WAIT:
+        {
+            USBPD_Control.PE_Timer = (uint16_t)(USBPD_Control.PE_Timer + elapsed_ms);
+            if (USBPD_Control.PE_Timer >= USBPD_T_SENDER_RESPONSE_MS)
+            {
+                USBPD_PE_SendHardResetAndWaitCaps();
+            }
+            break;
+        }
     case STA_RX_PS_RDY_WAIT:
         {
+            USBPD_Control.PE_Timer = (uint16_t)(USBPD_Control.PE_Timer + elapsed_ms);
+            if (USBPD_Control.PE_Timer >= USBPD_T_PS_TRANSITION_MS)
+            {
+                USBPD_PE_SendHardResetAndWaitCaps();
+            }
             break;
         }
     case STA_TX_GOODCRC:
@@ -266,6 +335,7 @@ void USBPD_PE_Run(void)
                     PRINT("ACCEPT received\r\n");
                     if (USBPD_Control.PD_State == STA_RX_ACCEPT_WAIT)
                     {
+                        USBPD_PE_ResetTimer();
                         SWITCH_PD_STATE(STA_RX_PS_RDY_WAIT);
                     }
                     else
@@ -280,6 +350,7 @@ void USBPD_PE_Run(void)
                     PRINT("REJECT/WAIT received\r\n");
                     if (USBPD_Control.PD_State == STA_RX_ACCEPT_WAIT)
                     {
+                        USBPD_PE_ResetTimer();
                         SWITCH_PD_STATE(USBPD_Control.Flag.Explicit_Contract ? STA_IDLE : STA_RX_SRC_CAP_WAIT);
                     }
                     else
@@ -294,6 +365,8 @@ void USBPD_PE_Run(void)
                     if (USBPD_Control.PD_State == STA_RX_PS_RDY_WAIT)
                     {
                         USBPD_Control.Flag.Explicit_Contract = 1u;
+                        USBPD_Control.HardResetCounter = 0u;
+                        USBPD_PE_ResetTimer();
                         SWITCH_PD_STATE(STA_IDLE);
                     }
                     else
@@ -331,6 +404,8 @@ void USBPD_PE_Run(void)
                     if (USBPD_Control.PD_State == STA_RX_SRC_CAP_WAIT ||
                         (USBPD_Control.Flag.Explicit_Contract && USBPD_Control.PD_State == STA_IDLE))
                     {
+                        USBPD_Control.HardResetCounter = 0u;
+                        USBPD_PE_ResetTimer();
                         SWITCH_PD_STATE(STA_TX_REQ);
                         USBPD_PDO_Analyse(pe_rx_buf);
                     }
@@ -387,7 +462,7 @@ __attribute__((interrupt("WCH-Interrupt-fast")))void USBPD_IRQHandler(void)
             }
             else
             {
-                SWITCH_PD_STATE(STA_TX_GOODCRC);
+                USBPD_PE_SendGoodCRCForLastRx();
                 const uint8_t rx_msg_id = last_rx_header.Message_Header.MsgID & 0x07u;
                 if (USBPD_Control.Flag.Rx_MsgID_Valid &&
                     ((USBPD_Control.Rx_Last_MsgID & 0x07u) == rx_msg_id))
