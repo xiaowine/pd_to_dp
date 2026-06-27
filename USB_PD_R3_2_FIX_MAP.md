@@ -11,6 +11,7 @@ Status legend:
 - `[ ]` Open
 - `[x]` Fixed and verified
 - `[~]` Partially fixed or needs retest
+- `[-]` Not applicable/deferred for this Type-C to DP product, or requires external product/hardware data.
 
 Priority guide:
 - `P0`: Blocks a reliable USB PD protocol stack or can break basic attach/power negotiation.
@@ -61,7 +62,7 @@ Primary files:
 | [x] | PD-R3.2-029 | P0 | Bound Request transmission after `Source_Capabilities` by `tSenderResponse`. |
 | [x] | PD-R3.2-038 | P0 | Handle `Wait` response and implement `SinkRequestTimer`. |
 | [x] | PD-R3.2-043 | P1 | Enter USB Type-C Error Recovery on SOP Port Data Role mismatch. |
-| [ ] | PD-R3.2-046 | P0 | Gate Sink discovery by VBUS-present detection. |
+| [-] | PD-R3.2-046 | P0 | Deferred: board code exposes CC detect but no VBUS-present input/API to gate discovery. |
 | [x] | PD-R3.2-053 | P0 | Treat unexpected recognized control responses as Protocol Error. |
 | [x] | PD-R3.2-069 | P0 | Avoid repeating an unchanged Sink Request after Source `Reject`. |
 | [x] | PD-R3.2-070 | P0 | Run Sink transition-to-default recovery after transmitting Hard Reset. |
@@ -83,8 +84,8 @@ Primary files:
 | [x] | PD-R3.2-008 | P1 | Respond to `Get_Sink_Cap` with `Sink_Capabilities`. |
 | [x] | PD-R3.2-016 | P1 | Classify and handle Extended/Chunked messages, including `ChunkingNotSupportedTimer`. |
 | [x] | PD-R3.2-019 | P1 | Implement required Data Reset state machine or compliant response path. |
-| [ ] | PD-R3.2-024 | P1 | Implement required BIST message behavior. |
-| [ ] | PD-R3.2-025 | P1 | Respond to `Get_Sink_Cap_Extended` with `Sink_Capabilities_Extended`. |
+| [-] | PD-R3.2-024 | P1 | Deferred: BIST/test-mode behavior is not part of the Type-C to DP runtime path. |
+| [-] | PD-R3.2-025 | P1 | Deferred: current product answers unsupported extended capabilities; full payload needs product power metadata. |
 | [x] | PD-R3.2-026 | P1 | Respond to `Get_Revision` with Revision Message. |
 | [x] | PD-R3.2-033 | P1 | Inform DPM when `Not_Supported` is received. |
 | [x] | PD-R3.2-040 | P1 | Inform DPM when `Alert` is received. |
@@ -119,7 +120,7 @@ Primary files:
 | [x] | PD-R3.2-050 | P1 | Keep Alternate Mode state across Soft Reset; reset only PD protocol scope. |
 | [x] | PD-R3.2-052 | P1 | Sanitize Object Position in invalid-command NAKs. |
 | [x] | PD-R3.2-054 | P1 | Treat unexpected Structured VDM responses as Protocol Error. |
-| [ ] | PD-R3.2-055 | P2 | Add required Structured VDM discovery initiator support for Modal Operation. |
+| [-] | PD-R3.2-055 | P2 | Not applicable for current UFP_U policy: this product responds to DFP discovery and does not locally initiate discovery. |
 | [x] | PD-R3.2-076 | P1 | NAK Structured VDM requests with invalid version fields. |
 | [x] | PD-R3.2-077 | P1 | Require prior Discover Modes result before ACKing Enter Mode. |
 | [x] | PD-R3.2-084 | P1 | NAK or correctly handle repeated Enter Mode while DP mode is already active. |
@@ -136,12 +137,12 @@ Primary files:
 
 | Status | ID | Priority | Fix target |
 | --- | --- | --- | --- |
-| [ ] | PD-R3.2-012 | P1 | Replace Discover Identity placeholder VID/PID with valid device identity values. |
+| [-] | PD-R3.2-012 | P1 | Deferred: requires assigned USB-IF VID/PID/product identity values. |
 | [x] | PD-R3.2-014 | P1 | Make Sink-initiated Attention obey SinkTxOK collision avoidance. |
 | [x] | PD-R3.2-020 | P1 | Trigger required Hard Reset for `DR_Swap` during Modal Operation. |
 | [x] | PD-R3.2-021 | P1 | Exit Active Modes and return port to USB operation on Detach. |
 | [x] | PD-R3.2-022 | P1 | NAK Exit Mode for invalid or inactive modes. |
-| [ ] | PD-R3.2-037 | P1 | Advertise supported DP signal-reconfiguration mode in Discover Identity UFP VDO. |
+| [-] | PD-R3.2-037 | P1 | Deferred: needs final product identity/VDO policy for USB/DP signal reconfiguration advertisement. |
 | [x] | PD-R3.2-042 | P1 | Return port to USB operation before sending Exit Mode ACK. |
 | [x] | PD-R3.2-047 | P1 | Do not apply DP pin configuration before Enter Mode process completes. |
 | [x] | PD-R3.2-048 | P1 | NAK DP SVID-specific commands when no DP Active Mode exists. |
@@ -154,7 +155,7 @@ Primary files:
 | [x] | PD-R3.2-063 | P2 | Preserve HPD queue ordering after `HPD_Low` and clear stale `IRQ_HPD`. |
 | [x] | PD-R3.2-064 | P1 | Report DP Status Enabled only when DisplayPort functionality is enabled. |
 | [x] | PD-R3.2-065 | P1 | Do not send HPD Attention before initial DisplayPort Status exchange. |
-| [ ] | PD-R3.2-066 | P2 | Add USB Billboard path when DisplayPort Alt Mode entry fails. |
+| [-] | PD-R3.2-066 | P2 | Deferred: requires USB Billboard device support outside the current PD/DP firmware path. |
 | [x] | PD-R3.2-067 | P1 | Re-enable HPD after returning from USB Configuration to DP Configuration. |
 | [x] | PD-R3.2-068 | P1 | Debounce HPD High before USB PD reporting. |
 | [x] | PD-R3.2-071 | P1 | Debounce/filter raw HPD high before initial DP Status report. |
