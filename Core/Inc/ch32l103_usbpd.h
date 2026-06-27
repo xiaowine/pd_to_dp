@@ -279,6 +279,10 @@ typedef struct
     volatile uint8_t CC_Sel_State : 1; /* 0-CC 通道切换到 0；1-CC 通道切换到 1 */
     volatile uint8_t PD_Comm_Succ : 1; /* 0-PD 通信失败；1-PD 通信成功 */
     uint8_t Recv : 1;
+    volatile uint8_t Tx_GoodCRC_Received : 1; /* 发送端等待 GoodCRC 时由接收中断置位 */
+    volatile uint8_t Rx_MsgID_Valid : 1; /* SOP 接收端上一次 MessageID 是否有效 */
+    volatile uint8_t Explicit_Contract : 1; /* Sink 已完成显式合约 */
+    volatile uint8_t DP_Modes_Discovered : 1; /* 已成功返回 DP Discover Modes */
 } BIT_FLAG;
 
 /* PD 控制相关结构体 */
@@ -292,6 +296,8 @@ typedef struct
     volatile uint8_t Det_Sel_Cnt; /* PD 连接检测中 SEL 切换次数 */
     volatile uint16_t PD_Comm_Timer; /* PD 通信共享计时变量 */
     volatile uint8_t ReqPDO_Idx; /* 请求的 PDO 索引，有效值 1-7 */
+    volatile uint8_t Tx_GoodCRC_MsgID; /* 最近收到的 GoodCRC MessageID */
+    volatile uint8_t Rx_Last_MsgID; /* SOP 接收端上一次 MessageID */
     volatile uint16_t PD_BusIdle_Timer; /* 总线空闲时间计时器 */
     volatile uint8_t Mode_Try_Cnt; /* 当前模式重试次数，最高位用于模式标记 */
     volatile uint8_t Err_Op_Cnt; /* 异常操作计数 */

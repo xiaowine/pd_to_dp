@@ -11,8 +11,9 @@ typedef enum
 
 typedef enum
 {
-    VL171_MODE_USB_DP_2LANE = 0u,
-    VL171_MODE_DP_4LANE = 1u,
+    VL171_MODE_USB = 0u,
+    VL171_MODE_USB_DP_2LANE = 1u,
+    VL171_MODE_DP_4LANE = 2u,
 } VL171_Mode;
 
 void VL171_Init(void);

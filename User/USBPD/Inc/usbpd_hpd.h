@@ -32,6 +32,8 @@ uint8_t USBPD_HPD_IsEnabled(void);
 USBPD_HPDStatus USBPD_HPD_ReadStatus(void);
 USBPD_HPDStatus USBPD_HPD_GetSnapshot(void);
 uint8_t USBPD_HPD_PollEvent(USBPD_HPDEvent* event);
+uint8_t USBPD_HPD_PeekEvent(USBPD_HPDEvent* event);
+void USBPD_HPD_CommitEvent(const USBPD_HPDEvent* event);
 void USBPD_HPD_RecordReported(uint8_t logical_high);
 uint8_t USBPD_HPD_GetReportedValid(void);
 uint8_t USBPD_HPD_GetReportedHigh(void);

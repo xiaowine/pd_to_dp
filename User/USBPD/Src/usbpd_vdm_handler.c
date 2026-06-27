@@ -17,7 +17,7 @@ static uint32_t USBPD_BuildDPStatusVDO(const USBPD_HPDStatus* hpd_status)
     USBPD_DPStatusVDO status_vdo = {0};
 
     status_vdo.Bit.Connected = USBPD_DP_CONNECTED_SINK;
-    status_vdo.Bit.Enabled = 1u;
+    status_vdo.Bit.Enabled = USBPD_HPD_IsEnabled() ? 1u : 0u;
     status_vdo.Bit.MultiFunctionPreferred = (USBPD_DP_GetLaneMode() == USBPD_DP_LANE_MODE_2LANE) ? 1u : 0u;
 
     if (hpd_status->logical_high)
@@ -80,7 +80,7 @@ static Message_Header USBPD_BuildDataHeader(uint8_t msg_type, uint8_t num_do)
 }
 
 /* 将若干个 32-bit Data Object 封装进发送缓冲区，并发出一帧 Data Message。 */
-static void USBPD_SendDataMessage(uint8_t* tx_buf, uint8_t msg_type, uint8_t num_do, const uint32_t* vdo_list)
+static uint8_t USBPD_SendDataMessage(uint8_t* tx_buf, uint8_t msg_type, uint8_t num_do, const uint32_t* vdo_list)
 {
     const Message_Header header = USBPD_BuildDataHeader(msg_type, num_do);
     uint8_t tx_len = 2u;
@@ -93,14 +93,43 @@ static void USBPD_SendDataMessage(uint8_t* tx_buf, uint8_t msg_type, uint8_t num
         tx_len = (uint8_t)(tx_len + 4u);
     }
 
-    USBPD_Phy_TxPacket(tx_buf, tx_len, UPD_SOP0, 1);
-    USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+    if (USBPD_Phy_TxMessageWaitGoodCRC(tx_buf, tx_len, UPD_SOP0) == DEF_PD_TX_OK)
+    {
+        USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+        return DEF_PD_TX_OK;
+    }
+
+    return DEF_PD_TX_FAIL;
+}
+
+static uint8_t USBPD_SendControlMessage(uint8_t* tx_buf, uint8_t msg_type)
+{
+    const Message_Header header = {
+        .Message_Header = {
+            .MsgType = msg_type,
+            .NumDO = 0u,
+            .PDRole = USBPD_Control.Flag.PD_Role,
+            .SpecRev = USBPD_Control.Flag.PD_Version ? 0b10 : 0b01,
+            .PRRole = USBPD_Control.Flag.PR_Role,
+            .MsgID = USBPD_Control.Msg_ID & 0x07u,
+            .Ext = 0u,
+        }
+    };
+
+    memcpy(tx_buf, &header.raw, sizeof(header.raw));
+    if (USBPD_Phy_TxMessageWaitGoodCRC(tx_buf, 2u, UPD_SOP0) == DEF_PD_TX_OK)
+    {
+        USBPD_Control.Msg_ID = (uint8_t)((USBPD_Control.Msg_ID + 1u) & 0x07u);
+        return DEF_PD_TX_OK;
+    }
+
+    return DEF_PD_TX_FAIL;
 }
 
 /* 发送 Structured VDM 响应，其中第 0 个 Data Object 固定为 VDM Header。 */
-static void USBPD_SendStructuredVDMResponse(uint8_t* tx_buf, const USBPD_VDMHeaderStructured* vdm_header,
-                                            const uint8_t num_vdos,
-                                            const uint32_t* vdo_list)
+static uint8_t USBPD_SendStructuredVDMResponse(uint8_t* tx_buf, const USBPD_VDMHeaderStructured* vdm_header,
+                                               const uint8_t num_vdos,
+                                               const uint32_t* vdo_list)
 {
     uint32_t payload[7] = {0};
 
@@ -111,21 +140,28 @@ static void USBPD_SendStructuredVDMResponse(uint8_t* tx_buf, const USBPD_VDMHead
         memcpy(&payload[1], vdo_list, (num_vdos - 1u) * sizeof(uint32_t));
     }
 
-    USBPD_SendDataMessage(tx_buf, DEF_TYPE_VENDOR_DEFINED, num_vdos, payload);
+    return USBPD_SendDataMessage(tx_buf, DEF_TYPE_VENDOR_DEFINED, num_vdos, payload);
 }
 
 /* 设置响应类型和 SVDM 版本后，统一回发 Structured VDM 响应报文。 */
-static void USBPD_ReplyStructuredVDM(uint8_t* tx_buf, USBPD_VDMHeaderStructured* vdm_header, uint8_t command_type,
-                                     const uint8_t num_vdos, const uint32_t* vdo_list)
+static uint8_t USBPD_ReplyStructuredVDM(uint8_t* tx_buf, USBPD_VDMHeaderStructured* vdm_header, uint8_t command_type,
+                                        const uint8_t num_vdos, const uint32_t* vdo_list)
 {
     /* DP Alt Mode v2.0 要求 Structured VDM Version 使用 2.0。 */
     vdm_header->Bit.CommandType = command_type;
+    vdm_header->Bit.Reserved5 = 0u;
+    if (vdm_header->Bit.Command == USBPD_SVDM_CMD_DISCOVER_IDENTITY ||
+        vdm_header->Bit.Command == USBPD_SVDM_CMD_DISCOVER_SVIDS ||
+        vdm_header->Bit.Command == USBPD_SVDM_CMD_DISCOVER_MODES)
+    {
+        vdm_header->Bit.ObjectPosition = 0u;
+    }
     vdm_header->Bit.StructuredVDMVersionMajor = USBPD_SVDM_MAJOR_2PX;
     vdm_header->Bit.StructuredVDMVersionMinor = USBPD_SVDM_MINOR_2P0;
-    USBPD_SendStructuredVDMResponse(tx_buf, vdm_header, num_vdos, vdo_list);
+    return USBPD_SendStructuredVDMResponse(tx_buf, vdm_header, num_vdos, vdo_list);
 }
 
-static void USBPD_SendDPAttention(uint8_t* tx_buf, const USBPD_HPDStatus* hpd_status)
+static uint8_t USBPD_SendDPAttention(uint8_t* tx_buf, const USBPD_HPDStatus* hpd_status)
 {
     USBPD_VDMHeaderStructured vdm_header = {0};
     const uint32_t vdos[] = {
@@ -141,7 +177,68 @@ static void USBPD_SendDPAttention(uint8_t* tx_buf, const USBPD_HPDStatus* hpd_st
     vdm_header.Bit.SVID = USBPD_DP_ALT_MODE.svid;
 
     USBPD_LogDPStatusVDO("ATTN ", vdos[0]);
-    USBPD_SendStructuredVDMResponse(tx_buf, &vdm_header, 2u, vdos);
+    return USBPD_SendStructuredVDMResponse(tx_buf, &vdm_header, 2u, vdos);
+}
+
+static uint8_t USBPD_DPModeIsActive(void)
+{
+    return (USBPD_Control.Mode_Try_Cnt & 0x80u) ? 1u : 0u;
+}
+
+static uint8_t USBPD_SVDMVersionIsSupported(const USBPD_VDMHeaderStructured* vdm_header)
+{
+    if (vdm_header->Bit.StructuredVDMVersionMajor > USBPD_SVDM_MAJOR_2PX)
+    {
+        return 0u;
+    }
+
+    if (vdm_header->Bit.StructuredVDMVersionMajor == USBPD_SVDM_MAJOR_2PX &&
+        vdm_header->Bit.StructuredVDMVersionMinor > USBPD_SVDM_MINOR_2P0)
+    {
+        return 0u;
+    }
+
+    return 1u;
+}
+
+static uint8_t USBPD_SVDMRequestHasValidShape(const Message_Header* last_header,
+                                              const USBPD_VDMHeaderStructured* vdm_header)
+{
+    if (vdm_header->Bit.Reserved5 != 0u || !USBPD_SVDMVersionIsSupported(vdm_header))
+    {
+        return 0u;
+    }
+
+    switch (vdm_header->Bit.Command)
+    {
+    case USBPD_SVDM_CMD_DISCOVER_IDENTITY:
+    case USBPD_SVDM_CMD_DISCOVER_SVIDS:
+        return last_header->Message_Header.NumDO == 1u &&
+               vdm_header->Bit.ObjectPosition == 0u &&
+               vdm_header->Bit.SVID == USBPD_PD_SID;
+
+    case USBPD_SVDM_CMD_DISCOVER_MODES:
+        return last_header->Message_Header.NumDO == 1u &&
+               vdm_header->Bit.ObjectPosition == 0u;
+
+    case USBPD_SVDM_CMD_ENTER_MODE:
+    case USBPD_SVDM_CMD_EXIT_MODE:
+        return last_header->Message_Header.NumDO == 1u &&
+               vdm_header->Bit.ObjectPosition != 0u;
+
+    case USBPD_DP_CMD_STATUS_UPDATE:
+    case USBPD_DP_CMD_CONFIGURE:
+        return last_header->Message_Header.NumDO == 2u &&
+               vdm_header->Bit.SVID == USBPD_DP_ALT_MODE.svid &&
+               vdm_header->Bit.ObjectPosition == USBPD_DP_ALT_MODE.object_position &&
+               USBPD_DPModeIsActive();
+
+    case USBPD_SVDM_CMD_ATTENTION:
+        return 1u;
+
+    default:
+        return last_header->Message_Header.NumDO >= 1u;
+    }
 }
 
 void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
@@ -153,7 +250,7 @@ void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
         return;
     }
 
-    if (!USBPD_HPD_PollEvent(&hpd_event))
+    if (!USBPD_HPD_PeekEvent(&hpd_event))
     {
         return;
     }
@@ -181,14 +278,23 @@ void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
         }
     }
 
-    USBPD_SendDPAttention(tx_buf, &hpd_event.status);
-    USBPD_HPD_RecordReported(hpd_event.status.logical_high);
+    if (USBPD_SendDPAttention(tx_buf, &hpd_event.status) == DEF_PD_TX_OK)
+    {
+        USBPD_HPD_CommitEvent(&hpd_event);
+        USBPD_HPD_RecordReported(hpd_event.status.logical_high);
+    }
 }
 
 /* 处理 Structured VDM Request，覆盖 DP Alt Mode 枚举和配置相关命令。 */
 static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_buf, const Message_Header* last_header,
                                              USBPD_VDMHeaderStructured* vdm_header)
 {
+    if (!USBPD_SVDMRequestHasValidShape(last_header, vdm_header))
+    {
+        USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_NAK, 1u, NULL);
+        return;
+    }
+
     /* 仅处理 Structured VDM 请求，覆盖 DP Alt Mode 所需的关键命令。 */
     switch (vdm_header->Bit.Command)
     {
@@ -247,7 +353,11 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
                 };
 
                 USBPD_LogDPModeVDO(vdos[0]);
-                USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 2u, vdos);
+                if (USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 2u, vdos) ==
+                    DEF_PD_TX_OK)
+                {
+                    USBPD_Control.Flag.DP_Modes_Discovered = 1u;
+                }
             }
             break;
         }
@@ -255,23 +365,41 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
         {
             /* 仅接受 DP SVID 的第 1 个 mode entry。 */
             if (vdm_header->Bit.SVID != USBPD_DP_ALT_MODE.svid ||
+                vdm_header->Bit.ObjectPosition != USBPD_DP_ALT_MODE.object_position ||
+                !USBPD_Control.Flag.DP_Modes_Discovered)
+            {
+                USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_NAK, 1u, NULL);
+                break;
+            }
+
+            if (USBPD_DPModeIsActive())
+            {
+                USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_NAK, 1u, NULL);
+                break;
+            }
+
+            if (USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL) == DEF_PD_TX_OK)
+            {
+                /* 进入 DP 模式后打开 HPD 检测。 */
+                USBPD_Control.Mode_Try_Cnt |= 0x80u;
+                USBPD_HPD_EnterMode();
+            }
+            break;
+        }
+    case USBPD_SVDM_CMD_EXIT_MODE:
+        {
+            if (!USBPD_DPModeIsActive() ||
+                vdm_header->Bit.SVID != USBPD_DP_ALT_MODE.svid ||
                 vdm_header->Bit.ObjectPosition != USBPD_DP_ALT_MODE.object_position)
             {
                 USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_NAK, 1u, NULL);
                 break;
             }
 
-            /* 进入 DP 模式后打开 HPD 检测。 */
-            USBPD_Control.Mode_Try_Cnt |= 0x80u;
-            USBPD_HPD_EnterMode();
-            USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);
-            break;
-        }
-    case USBPD_SVDM_CMD_EXIT_MODE:
-        {
             /* 退出 DP 模式后清掉进入标志并停止 HPD 检测。 */
             USBPD_Control.Mode_Try_Cnt &= (uint8_t)~0x80u;
             USBPD_HPD_Disable();
+            VL171_ApplyMode(VL171_MODE_USB);
             USBPD_ReplyStructuredVDM(tx_buf, vdm_header, USBPD_SVDM_CMDTYPE_ACK, 1u, NULL);
             break;
         }
@@ -346,6 +474,7 @@ static void USBPD_HandleStructuredVDMRequest(const uint8_t* rx_buf, uint8_t* tx_
                 if (config.Bit.SelectConfiguration == USBPD_DP_SELECT_USB)
                 {
                     USBPD_HPD_Disable();
+                    VL171_ApplyMode(VL171_MODE_USB);
                 }
                 else
                 {
@@ -376,7 +505,8 @@ void USBPD_VDM_Handle(const uint8_t* rx_buf, uint8_t* tx_buf, const Message_Head
     memcpy(&vdm_header.Raw, &rx_buf[2], sizeof(vdm_header.Raw));
     if (!vdm_header.Bit.VDMType)
     {
-        /* 当前仅处理 Structured VDM，Unstructured VDM 直接忽略。 */
+        /* 本产品不支持厂商私有 Unstructured VDM，显式合约后按规范回 Not_Supported。 */
+        USBPD_SendControlMessage(tx_buf, DEF_TYPE_NOT_SUPPORT);
         return;
     }
 

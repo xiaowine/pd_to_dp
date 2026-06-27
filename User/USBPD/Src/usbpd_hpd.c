@@ -17,6 +17,8 @@ static volatile uint8_t s_pending_low;
 static volatile uint8_t s_pending_irq;
 static volatile uint16_t s_pending_irq_low_us;
 static volatile uint16_t s_pending_low_us;
+static uint8_t s_tx_pending_valid;
+static USBPD_HPDEvent s_tx_pending_event;
 
 static USBPD_HPDStatus USBPD_HPD_MakeStatus(uint8_t gpio_high, uint8_t irq_hpd, uint16_t low_us)
 {
@@ -46,6 +48,8 @@ static void USBPD_HPD_ClearPendingEvents(void)
     s_pending_irq = 0u;
     s_pending_irq_low_us = 0u;
     s_pending_low_us = 0u;
+    s_tx_pending_valid = 0u;
+    s_tx_pending_event.type = USBPD_HPD_EVENT_NONE;
 }
 
 static USBPD_HPDStatus USBPD_HPD_CheckLongLow(USBPD_HPDEventType* event_type)
@@ -106,6 +110,34 @@ static uint8_t USBPD_HPD_PopPendingEvent(USBPD_HPDEvent* event)
         event->type = USBPD_HPD_EVENT_IRQ;
         event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 1u, low_us);
         s_pending_irq = 0u;
+    }
+    else
+    {
+        event_found = 0u;
+    }
+
+    return event_found;
+}
+
+static uint8_t USBPD_HPD_PeekPendingEvent(USBPD_HPDEvent* event)
+{
+    uint8_t event_found = 1u;
+    const uint8_t gpio_high = DP_HPD_IsHigh();
+
+    if (s_pending_low)
+    {
+        event->type = USBPD_HPD_EVENT_LOW;
+        event->status = USBPD_HPD_MakeEventStatus(0u, gpio_high, 0u, s_pending_low_us);
+    }
+    else if (s_pending_high)
+    {
+        event->type = USBPD_HPD_EVENT_HIGH;
+        event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 0u, 0u);
+    }
+    else if (s_pending_irq)
+    {
+        event->type = USBPD_HPD_EVENT_IRQ;
+        event->status = USBPD_HPD_MakeEventStatus(1u, gpio_high, 1u, s_pending_irq_low_us);
     }
     else
     {
@@ -187,6 +219,64 @@ uint8_t USBPD_HPD_PollEvent(USBPD_HPDEvent* event)
     }
 
     return USBPD_HPD_PopPendingEvent(event);
+}
+
+uint8_t USBPD_HPD_PeekEvent(USBPD_HPDEvent* event)
+{
+    USBPD_HPDEventType long_low_event = USBPD_HPD_EVENT_NONE;
+
+    event->type = USBPD_HPD_EVENT_NONE;
+    if (s_tx_pending_valid)
+    {
+        *event = s_tx_pending_event;
+        return 1u;
+    }
+
+    event->status = USBPD_HPD_CheckLongLow(&long_low_event);
+    if (long_low_event == USBPD_HPD_EVENT_LOW)
+    {
+        event->type = USBPD_HPD_EVENT_LOW;
+        s_tx_pending_event = *event;
+        s_tx_pending_valid = 1u;
+        return 1u;
+    }
+
+    return USBPD_HPD_PeekPendingEvent(event);
+}
+
+void USBPD_HPD_CommitEvent(const USBPD_HPDEvent* event)
+{
+    if (event == NULL)
+    {
+        return;
+    }
+
+    if (s_tx_pending_valid && s_tx_pending_event.type == event->type)
+    {
+        s_tx_pending_valid = 0u;
+        s_tx_pending_event.type = USBPD_HPD_EVENT_NONE;
+        return;
+    }
+
+    switch (event->type)
+    {
+    case USBPD_HPD_EVENT_LOW:
+        s_pending_low = 0u;
+        s_pending_low_us = 0u;
+        break;
+
+    case USBPD_HPD_EVENT_HIGH:
+        s_pending_high = 0u;
+        break;
+
+    case USBPD_HPD_EVENT_IRQ:
+        s_pending_irq = 0u;
+        s_pending_irq_low_us = 0u;
+        break;
+
+    default:
+        break;
+    }
 }
 
 void USBPD_HPD_RecordReported(uint8_t logical_high)

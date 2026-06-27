@@ -6,6 +6,8 @@
 #include "usbpd_pe.h"
 
 #define USBPD_T_INTER_FRAME_GAP_US 25u
+#define USBPD_N_RETRY_COUNT        2u
+#define USBPD_CRC_RECEIVE_TIMEOUT_US 1200u
 
 uint8_t currentDeltaTimer = 0; // 当前系统计时器毫秒计时的增量值
 uint8_t totalDeltaTime = 0; // 系统计时器毫秒计时的总递增值
@@ -59,6 +61,43 @@ void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t so
         USBPD_CC_LVE_DISABLE_SELECTED();
         USBPD_Phy_EnterRxMode();
     }
+}
+
+uint8_t USBPD_Phy_TxMessageWaitGoodCRC(const uint8_t* pbuf, const uint8_t len, const uint8_t sop)
+{
+    if (pbuf == NULL || len < 2u)
+    {
+        USBPD_Phy_TxPacket(pbuf, len, sop, 1u);
+        return DEF_PD_TX_OK;
+    }
+
+    const Message_Header tx_header = {
+        .raw = USBPD_READ_LE16(pbuf),
+    };
+    const uint8_t tx_msg_id = tx_header.Message_Header.MsgID & 0x07u;
+
+    for (uint8_t attempt = 0u; attempt <= USBPD_N_RETRY_COUNT; attempt++)
+    {
+        USBPD_Control.Flag.Tx_GoodCRC_Received = 0u;
+        USBPD_Control.Tx_GoodCRC_MsgID = 0xFFu;
+        USBPD_Phy_TxPacket(pbuf, len, sop, 1u);
+
+        uint16_t timeout_us = USBPD_CRC_RECEIVE_TIMEOUT_US;
+        while (timeout_us > 0u)
+        {
+            if (USBPD_Control.Flag.Tx_GoodCRC_Received &&
+                ((USBPD_Control.Tx_GoodCRC_MsgID & 0x07u) == tx_msg_id))
+            {
+                USBPD_Control.Flag.Tx_GoodCRC_Received = 0u;
+                return DEF_PD_TX_OK;
+            }
+            Delay_Us(1u);
+            timeout_us--;
+        }
+    }
+
+    USBPD_Control.Flag.Tx_GoodCRC_Received = 0u;
+    return DEF_PD_TX_FAIL;
 }
 
 void USBPD_Phy_EnterRxMode(void)
@@ -152,6 +191,7 @@ void USBPD_Phy_Detect_Check(void)
             {
                 USBPD_Control.Flag.Connected = 0;
                 USBPD_Phy_Detect_EventCallback(PD_EVENT_DETACH, ret);
+                USBPD_PE_Reset();
                 if (!USBPD_Control.Flag.Stop_Det_Chk)
                 {
                     SWITCH_PD_STATE(STA_DISCONNECT);
@@ -183,12 +223,11 @@ void USBPD_Phy_Detect_Check(void)
                 USBPD->CONFIG |= CC_SEL;
             }
             USBPD_Phy_Detect_EventCallback(PD_EVENT_ATTACH, ret);
+            USBPD_PE_Reset();
             if (!USBPD_Control.Flag.Stop_Det_Chk)
             {
-                SWITCH_PD_STATE(STA_SRC_CONNECT);
+                SWITCH_PD_STATE(STA_RX_SRC_CAP_WAIT);
             }
-            // USBPD_Phy_TxPacket(NULL, 0, UPD_HARD_RESET, 1); /* 发送 Hard Reset 并等待发送完成 */
-            USBPD_Phy_TxPacket(NULL, 0, UPD_SOP0, 0);
             USBPD_Phy_EnterRxMode();
         }
     }

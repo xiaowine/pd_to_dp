@@ -179,7 +179,7 @@ uint8_t USBPD_FIND_5V_PDO(const uint8_t* message)
         const uint32_t raw = USBPD_READ_LE32(obj);
         USBPD_PDO_Fixed5V_Source pdo;
         pdo.Raw = raw;
-        if ((pdo.Bit.PDOType == USBPD_PDO_TYPE_FIXED) && pdo.Bit.VoltageIn50mV == 100u && pdo.Bit.USBCommCapable)
+        if ((pdo.Bit.PDOType == USBPD_PDO_TYPE_FIXED) && pdo.Bit.VoltageIn50mV == 100u)
         {
             index_5v = (uint8_t)(i + 1u);
             break;

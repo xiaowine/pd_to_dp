@@ -16,6 +16,7 @@ extern volatile PD_CONTROL USBPD_Control;
 void USBPD_Phy_Init(void);
 void USBPD_Phy_Run(void);
 void USBPD_Phy_TxPacket(const uint8_t* pbuf, uint8_t len, uint8_t sop, uint8_t sync_mode);
+uint8_t USBPD_Phy_TxMessageWaitGoodCRC(const uint8_t* pbuf, uint8_t len, uint8_t sop);
 void USBPD_Phy_SetRxBuffer(uint8_t* buf);
 void USBPD_Phy_EnterRxMode(void);
 

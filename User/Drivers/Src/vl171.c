@@ -69,6 +69,12 @@ void VL171_ApplyMode(VL171_Mode mode)
 {
     switch (mode)
     {
+    case VL171_MODE_USB:
+        VL171_SetControl(0u, s_vl171_orientation);
+        PRINT("VL171 USB %s\r\n",
+              (s_vl171_orientation == VL171_ORIENTATION_FLIPPED) ? "Flipped" : "Normal");
+        break;
+
     case VL171_MODE_USB_DP_2LANE:
         VL171_SetControl(0u, s_vl171_orientation);
         PRINT("VL171 2-lane DP + USB3 %s\r\n",

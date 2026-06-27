@@ -16,6 +16,8 @@
  */
 
 /* VDM 类型定义 */
+#define USBPD_PD_SID 0xFF00u
+
 typedef enum
 {
     USBPD_VDM_TYPE_UNSTRUCTURED = 0u, /* 非结构化 VDM */

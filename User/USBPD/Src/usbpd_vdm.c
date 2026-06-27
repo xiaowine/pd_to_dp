@@ -36,7 +36,7 @@ USBPD_DPAltModeDefinition USBPD_DP_ALT_MODE = {
         .PortCapability = USBPD_DP_PORT_UFP_D, /* 声明本设备 USB-C 口可作为 DP Sink/UFP_D。 */
         .Signaling = USBPD_DP_SIGNAL_DP, /* 声明支持 DP bit rate 和 DP 电气设置。 */
         .ReceptacleIndication = 1u, /* 声明 DP 接口呈现在 Type-C receptacle 上。 */
-        .UFP_DPinAssignments = USBPD_DP_PIN_ASSIGN_C, /* 默认声明 Pin C，也就是 4-lane DP。 */
+        .UFP_DPinAssignments = USBPD_DP_PIN_ASSIGN_C | USBPD_DP_PIN_ASSIGN_E, /* Type-C receptacle DP Sink 必须支持 C/E。 */
     },
     .supported_configurations = {
         {
@@ -53,20 +53,34 @@ USBPD_DPAltModeDefinition USBPD_DP_ALT_MODE = {
                 .PinAssignment = USBPD_DP_PIN_ASSIGN_C, /* 默认接受 Pin C，也就是 4-lane DP。 */
             },
         },
+        {
+            .Bit = {
+                .SelectConfiguration = USBPD_DP_SELECT_UFP_D_SINK, /* USB-C-to-DP 路径要求接受 Pin E。 */
+                .Signaling = USBPD_DP_SIGNAL_DP,
+                .PinAssignment = USBPD_DP_PIN_ASSIGN_E,
+            },
+        },
     },
-    .supported_configuration_count = 2u, /* 上面配置白名单的有效条目数量。 */
+    .supported_configuration_count = 3u, /* 上面配置白名单的有效条目数量。 */
 };
 
 static USBPD_DPLaneMode s_dp_lane_mode = USBPD_DP_LANE_MODE_4LANE;
 
 void USBPD_DP_SetLaneMode(USBPD_DPLaneMode mode)
 {
-    const uint8_t pin_assignment =
-        (mode == USBPD_DP_LANE_MODE_2LANE) ? USBPD_DP_PIN_ASSIGN_D : USBPD_DP_PIN_ASSIGN_C;
-
     s_dp_lane_mode = (mode == USBPD_DP_LANE_MODE_2LANE) ? USBPD_DP_LANE_MODE_2LANE : USBPD_DP_LANE_MODE_4LANE;
-    USBPD_DP_ALT_MODE.mode_vdo.Bit.UFP_DPinAssignments = pin_assignment;
-    USBPD_DP_ALT_MODE.supported_configurations[1].Bit.PinAssignment = pin_assignment;
+    USBPD_DP_ALT_MODE.mode_vdo.Bit.UFP_DPinAssignments = USBPD_DP_PIN_ASSIGN_C | USBPD_DP_PIN_ASSIGN_E;
+    USBPD_DP_ALT_MODE.supported_configurations[1].Bit.PinAssignment = USBPD_DP_PIN_ASSIGN_C;
+    USBPD_DP_ALT_MODE.supported_configurations[2].Bit.PinAssignment = USBPD_DP_PIN_ASSIGN_E;
+    USBPD_DP_ALT_MODE.supported_configuration_count = 3u;
+    if (s_dp_lane_mode == USBPD_DP_LANE_MODE_2LANE)
+    {
+        USBPD_DP_ALT_MODE.mode_vdo.Bit.UFP_DPinAssignments |= USBPD_DP_PIN_ASSIGN_D;
+        USBPD_DP_ALT_MODE.supported_configurations[3].Bit.SelectConfiguration = USBPD_DP_SELECT_UFP_D_SINK;
+        USBPD_DP_ALT_MODE.supported_configurations[3].Bit.Signaling = USBPD_DP_SIGNAL_DP;
+        USBPD_DP_ALT_MODE.supported_configurations[3].Bit.PinAssignment = USBPD_DP_PIN_ASSIGN_D;
+        USBPD_DP_ALT_MODE.supported_configuration_count = 4u;
+    }
 }
 
 USBPD_DPLaneMode USBPD_DP_GetLaneMode(void)
