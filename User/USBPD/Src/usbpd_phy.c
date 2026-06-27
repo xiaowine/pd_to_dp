@@ -8,6 +8,7 @@
 #define USBPD_T_INTER_FRAME_GAP_US 25u
 #define USBPD_N_RETRY_COUNT        2u
 #define USBPD_CRC_RECEIVE_TIMEOUT_US 1200u
+#define USBPD_TX_IDLE_WAIT_US      100u
 
 uint8_t currentDeltaTimer = 0; // 当前系统计时器毫秒计时的增量值
 uint8_t totalDeltaTime = 0; // 系统计时器毫秒计时的总递增值
@@ -16,6 +17,32 @@ uint8_t lastDeltaTime = 0; // 系统计时器毫秒计时的上一次的值
 volatile PD_CONTROL USBPD_Control = {0};
 
 uint8_t* s_rx_buf;
+
+static uint8_t USBPD_Phy_RxActivityPending(void)
+{
+    return (USBPD_Control.Flag.Msg_Recvd ||
+            USBPD_STATUS_HAS_FLAG(IF_RX_ACT) ||
+            USBPD_STATUS_HAS_FLAG(IF_RX_BIT) ||
+            USBPD_STATUS_HAS_FLAG(IF_RX_BYTE)) ? 1u : 0u;
+}
+
+static uint8_t USBPD_Phy_WaitTxIdleWindow(void)
+{
+    uint16_t idle_wait_us = USBPD_TX_IDLE_WAIT_US;
+
+    while (idle_wait_us > 0u)
+    {
+        if (!USBPD_Phy_RxActivityPending())
+        {
+            return 1u;
+        }
+        Delay_Us(1u);
+        idle_wait_us--;
+    }
+
+    USBPD_Phy_EnterRxMode();
+    return 0u;
+}
 
 void USBPD_Phy_TxPacket(const uint8_t* pbuf, const uint8_t len, const uint8_t sop, const uint8_t sync_mode)
 {
@@ -78,6 +105,11 @@ uint8_t USBPD_Phy_TxMessageWaitGoodCRC(const uint8_t* pbuf, const uint8_t len, c
 
     for (uint8_t attempt = 0u; attempt <= USBPD_N_RETRY_COUNT; attempt++)
     {
+        if (!USBPD_Phy_WaitTxIdleWindow())
+        {
+            return DEF_PD_TX_FAIL;
+        }
+
         USBPD_Control.Flag.Tx_GoodCRC_Received = 0u;
         USBPD_Control.Tx_GoodCRC_MsgID = 0xFFu;
         USBPD_Phy_TxPacket(pbuf, len, sop, 1u);

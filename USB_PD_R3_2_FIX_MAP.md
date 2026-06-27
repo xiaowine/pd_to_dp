@@ -36,9 +36,9 @@ Primary files:
 | [x] | PD-R3.2-003 | P0 | Wait for matching GoodCRC, retry with same MessageID, increment MessageID only after success. |
 | [x] | PD-R3.2-004 | P0 | Store last received MessageID per SOP and discard duplicate retries after GoodCRC. |
 | [x] | PD-R3.2-018 | P0 | Bound GoodCRC response timing to `tTransmit`. |
-| [ ] | PD-R3.2-031 | P0 | Implement `PRL_Tx_Discard_Message` behavior when incoming SOP traffic interrupts transmit preparation. |
+| [x] | PD-R3.2-031 | P0 | Implement `PRL_Tx_Discard_Message` behavior when incoming SOP traffic interrupts transmit preparation. |
 | [x] | PD-R3.2-032 | P0 | Reset MessageID counters and stored receive IDs on Protocol Layer reset. |
-| [ ] | PD-R3.2-034 | P0 | Check CC bus Idle immediately before packet transmission. |
+| [x] | PD-R3.2-034 | P0 | Check CC bus Idle immediately before packet transmission. |
 | [x] | PD-R3.2-039 | P0 | Recover transmission failure by sending required Soft Reset. |
 | [x] | PD-R3.2-079 | P0 | Fix receive/main-loop race where a message can be processed without sending GoodCRC. |
 
