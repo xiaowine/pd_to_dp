@@ -53,12 +53,12 @@ Primary files:
 | --- | --- | --- | --- |
 | [x] | PD-R3.2-001 | P0 | Remove normal-attach Hard Reset; enter Sink discovery/capability wait flow instead. |
 | [x] | PD-R3.2-002 | P0 | Respond to received `Soft_Reset` with `Accept` after resetting SOP protocol state. |
-| [~] | PD-R3.2-005 | P0 | Implement `PE_SNK_Select_Capability`, `PE_SNK_Transition_Sink`, explicit contract tracking, and `PE_SNK_Ready`. |
+| [x] | PD-R3.2-005 | P0 | Implement `PE_SNK_Select_Capability`, `PE_SNK_Transition_Sink`, explicit contract tracking, and `PE_SNK_Ready`. |
 | [x] | PD-R3.2-006 | P0 | Treat `Source_Capabilities` outside allowed Sink states as Protocol Error. |
 | [x] | PD-R3.2-013 | P0 | Handle received Hard Reset with Sink transition-to-default recovery. |
 | [x] | PD-R3.2-017 | P1 | Do not silently skip required Request when offered 5V PDO lacks USB communication capability. |
 | [x] | PD-R3.2-028 | P0 | Implement `SinkWaitCapTimer` and `HardResetCounter` for missing `Source_Capabilities`. |
-| [ ] | PD-R3.2-029 | P0 | Bound Request transmission after `Source_Capabilities` by `tSenderResponse`. |
+| [x] | PD-R3.2-029 | P0 | Bound Request transmission after `Source_Capabilities` by `tSenderResponse`. |
 | [~] | PD-R3.2-038 | P0 | Handle `Wait` response and implement `SinkRequestTimer`. |
 | [ ] | PD-R3.2-043 | P1 | Enter USB Type-C Error Recovery on SOP Port Data Role mismatch. |
 | [ ] | PD-R3.2-046 | P0 | Gate Sink discovery by VBUS-present detection. |

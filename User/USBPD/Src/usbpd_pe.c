@@ -495,8 +495,8 @@ void USBPD_PE_Run(void)
                     {
                         USBPD_Control.HardResetCounter = 0u;
                         USBPD_PE_ResetTimer();
-                        SWITCH_PD_STATE(STA_TX_REQ);
                         USBPD_PDO_Analyse(pe_rx_buf);
+                        STA_Req();
                     }
                     else
                     {
