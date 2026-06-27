@@ -5,6 +5,7 @@
 
 void USBPD_PE_Init(void);
 void USBPD_PE_Reset(void);
+void USBPD_PE_ProtocolErrorRecovery(void);
 void USBPD_PE_Run(void);
 
 #endif //USBPD_PE_H

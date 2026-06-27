@@ -4,14 +4,18 @@
 
 #include "pd_dp_alt_mode.h"
 #include "pd_vdm.h"
+#include "tim.h"
 #include "usbpd_helper.h"
 #include "usbpd_hpd.h"
+#include "usbpd_pe.h"
 #include "usbpd_phy.h"
 #include "usbpd_vdm.h"
 #include "usbpd_vdm_debug.h"
 #include "vl171.h"
 
 static uint8_t USBPD_SVDMCommandUsesObjectPosition(uint8_t command);
+static uint8_t s_attention_last_ms;
+static uint8_t s_attention_burst_count;
 
 /* 根据当前控制状态拼出本端要回传的 DP Status VDO。 */
 static uint32_t USBPD_BuildDPStatusVDO(const USBPD_HPDStatus* hpd_status)
@@ -269,6 +273,8 @@ static uint8_t USBPD_SVDMRequestHasValidShape(const Message_Header* last_header,
 void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
 {
     USBPD_HPDEvent hpd_event = {0};
+    const uint8_t now_ms = USBPD_Tim_Ms_Cnt;
+    const uint8_t attention_gap_ms = (uint8_t)(now_ms - s_attention_last_ms);
 
     if (!USBPD_Control.Flag.Connected || !USBPD_HPD_IsEnabled() ||
         !USBPD_HPD_GetReportedValid())
@@ -277,6 +283,11 @@ void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
     }
 
     if (!USBPD_HPD_PeekEvent(&hpd_event))
+    {
+        return;
+    }
+
+    if (s_attention_burst_count >= 2u && attention_gap_ms < 10u)
     {
         return;
     }
@@ -306,6 +317,18 @@ void USBPD_VDM_TrySendAttention(uint8_t* tx_buf)
 
     if (USBPD_SendDPAttention(tx_buf, &hpd_event.status) == DEF_PD_TX_OK)
     {
+        if (attention_gap_ms < 10u)
+        {
+            if (s_attention_burst_count < 2u)
+            {
+                s_attention_burst_count++;
+            }
+        }
+        else
+        {
+            s_attention_burst_count = 1u;
+        }
+        s_attention_last_ms = now_ms;
         USBPD_HPD_CommitEvent(&hpd_event);
         USBPD_HPD_RecordReported(hpd_event.status.logical_high);
     }
@@ -555,6 +578,7 @@ void USBPD_VDM_Handle(const uint8_t* rx_buf, uint8_t* tx_buf, const Message_Head
     case USBPD_SVDM_CMDTYPE_BUSY:
         {
             USBPD_LogVDMCommandType(vdm_header.Bit.CommandType);
+            USBPD_PE_ProtocolErrorRecovery();
             break;
         }
     default:

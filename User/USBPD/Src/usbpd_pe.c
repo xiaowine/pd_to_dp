@@ -116,6 +116,11 @@ static void USBPD_PE_StartProtocolRecovery(void)
     }
 }
 
+void USBPD_PE_ProtocolErrorRecovery(void)
+{
+    USBPD_PE_StartProtocolRecovery();
+}
+
 void USBPD_PE_Init(void)
 {
     USBPD_Phy_SetRxBuffer(pe_rx_buf);

@@ -118,7 +118,7 @@ Primary files:
 | [x] | PD-R3.2-044 | P1 | Sanitize reserved bits in Structured VDM responses. |
 | [x] | PD-R3.2-050 | P1 | Keep Alternate Mode state across Soft Reset; reset only PD protocol scope. |
 | [x] | PD-R3.2-052 | P1 | Sanitize Object Position in invalid-command NAKs. |
-| [ ] | PD-R3.2-054 | P1 | Treat unexpected Structured VDM responses as Protocol Error. |
+| [x] | PD-R3.2-054 | P1 | Treat unexpected Structured VDM responses as Protocol Error. |
 | [ ] | PD-R3.2-055 | P2 | Add required Structured VDM discovery initiator support for Modal Operation. |
 | [x] | PD-R3.2-076 | P1 | NAK Structured VDM requests with invalid version fields. |
 | [x] | PD-R3.2-077 | P1 | Require prior Discover Modes result before ACKing Enter Mode. |
@@ -147,7 +147,7 @@ Primary files:
 | [x] | PD-R3.2-048 | P1 | NAK DP SVID-specific commands when no DP Active Mode exists. |
 | [x] | PD-R3.2-056 | P1 | Validate Object Position for DP Status and Configure commands. |
 | [x] | PD-R3.2-057 | P1 | Reconnect pins to USB before ACKing DisplayPort Configure to USB. |
-| [ ] | PD-R3.2-058 | P1 | Enforce required third-message pacing for DP Attention transmission. |
+| [x] | PD-R3.2-058 | P1 | Enforce required third-message pacing for DP Attention transmission. |
 | [x] | PD-R3.2-059 | P1 | Advertise mandatory DP-only pin assignment in multi-function mode. |
 | [ ] | PD-R3.2-061 | P2 | Preserve queued second `IRQ_HPD` event in HPD-to-USB PD conversion. |
 | [x] | PD-R3.2-062 | P1 | Advertise mandatory Pin Assignment E for USB-C receptacle DP Sink. |
@@ -158,7 +158,7 @@ Primary files:
 | [x] | PD-R3.2-067 | P1 | Re-enable HPD after returning from USB Configuration to DP Configuration. |
 | [ ] | PD-R3.2-068 | P1 | Debounce HPD High before USB PD reporting. |
 | [ ] | PD-R3.2-071 | P1 | Debounce/filter raw HPD high before initial DP Status report. |
-| [ ] | PD-R3.2-074 | P1 | Enforce required DP Status/Configure VDO payload fields. |
+| [x] | PD-R3.2-074 | P1 | Enforce required DP Status/Configure VDO payload fields. |
 | [x] | PD-R3.2-075 | P1 | Advertise current Structured VDM minor version for standard SVDM commands. |
 | [x] | PD-R3.2-080 | P1 | Avoid entering DP Alt Mode before Enter Mode ACK transmission succeeds. |
 | [x] | PD-R3.2-081 | P1 | Remove HPD events from queue only after USB PD report succeeds. |
