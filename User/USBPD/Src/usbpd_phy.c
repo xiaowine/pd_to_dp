@@ -20,8 +20,13 @@ uint8_t* s_rx_buf;
 
 static uint8_t USBPD_Phy_RxActivityPending(void)
 {
-    return (USBPD_Control.Flag.Msg_Recvd ||
-            USBPD_STATUS_HAS_FLAG(IF_RX_ACT) ||
+    /*
+     * Msg_Recvd only means the PE still has a fully received packet queued in
+     * software. The PHY has already finished RX and the ISR has already sent
+     * GoodCRC, so follow-up responses such as Request/Accept must not treat
+     * that software flag as a bus-busy condition.
+     */
+    return (USBPD_STATUS_HAS_FLAG(IF_RX_ACT) ||
             USBPD_STATUS_HAS_FLAG(IF_RX_BIT) ||
             USBPD_STATUS_HAS_FLAG(IF_RX_BYTE)) ? 1u : 0u;
 }

@@ -19,6 +19,8 @@ static uint8_t s_attention_burst_count;
 static uint32_t s_active_dp_config_raw;
 static uint8_t s_active_dp_config_valid;
 
+#define USBPD_SVDM_LOCAL_MINOR_VERSION USBPD_SVDM_MINOR_2P0
+
 /* 根据当前控制状态拼出本端要回传的 DP Status VDO。 */
 static uint32_t USBPD_BuildDPStatusVDO(const USBPD_HPDStatus* hpd_status)
 {
@@ -228,7 +230,7 @@ static uint8_t USBPD_SVDMVersionIsSupported(const USBPD_VDMHeaderStructured* vdm
     }
 
     if (vdm_header->Bit.StructuredVDMVersionMajor == USBPD_SVDM_MAJOR_2PX &&
-        vdm_header->Bit.StructuredVDMVersionMinor > USBPD_SVDM_MINOR_2P0)
+        vdm_header->Bit.StructuredVDMVersionMinor > USBPD_SVDM_MINOR_2P1)
     {
         return 0u;
     }
@@ -246,7 +248,12 @@ static void USBPD_RecordCommonSVDMVersion(const USBPD_VDMHeaderStructured* vdm_h
     }
 
     USBPD_Control.SVDM_MajorVersion = USBPD_SVDM_MAJOR_2PX;
-    USBPD_Control.SVDM_MinorVersion = USBPD_SVDM_MINOR_2P0;
+    /*
+     * The partner may initiate discovery with SVDM 2.1. This firmware only
+     * emits the common 2.x version it actually implements, so clamp responses
+     * to 2.0 instead of rejecting the request outright.
+     */
+    USBPD_Control.SVDM_MinorVersion = USBPD_SVDM_LOCAL_MINOR_VERSION;
 }
 
 static uint8_t USBPD_SVDMCommandUsesObjectPosition(uint8_t command)
